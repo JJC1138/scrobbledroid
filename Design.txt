@@ -10,7 +10,7 @@ The Service will also communicate with the UI. It will do this when:
  scrobbling starts.
  scrobbling finishes or fails. It tells the UI whether it was successful or not.
 
-When the UI is hidden it stores the current uncommited preferences if they've been changed.
+When the UI is hidden it stores the current uncommitted preferences if they've been changed.
 When the Service is told that it will be shutdown (how?), it saves the current scrobbling queue to a file.
 
 When the Activity starts (resumes) it makes a connection to the Service. When the Service gets the connection it immediately updates the Activity about what is going on right now (how many tracks in the queue/are we scrobbling/was the last scrobble successful).
