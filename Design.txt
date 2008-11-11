@@ -1,0 +1,16 @@
+BroadcastReceiver receives notifications about new tracks. It passes them immediately to the Service (which is spawned if it doesn't exist yet).
+
+The service should be alive while a track is playing, or while there are tracks waiting to be scrobbled. If the service gets notification that a track has stopped and it doesn't need to be scrobbled (because it wasn't playing for long enough) then it will just drop it. If that happens and the scrobbling queue is empty then the service will quit. If scrobbling completes and there is nothing playing then the service will quit.
+
+The UI can communicate with the Service. It can tell it:
+ that the preferences have changed.
+ that the user has requested a scrobble.
+The Service will also communicate with the UI. It will do this when:
+ a new track is added to the scrobble queue. It tells the UI how many there are.
+ scrobbling starts.
+ scrobbling finishes or fails. It tells the UI whether it was successful or not.
+
+When the UI is hidden it stores the current uncommited preferences if they've been changed.
+When the Service is told that it will be shutdown (how?), it saves the current scrobbling queue to a file.
+
+When the Activity starts (resumes) it makes a connection to the Service. When the Service gets the connection it immediately updates the Activity about what is going on right now (how many tracks in the queue/are we scrobbling/was the last scrobble successful).

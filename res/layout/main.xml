@@ -48,18 +48,18 @@
     android:password="true"
     android:singleLine="true"
     />
-<LinearLayout
+<LinearLayout android:id="@+id/settings_changed"
 	android:orientation="horizontal"
 	android:layout_width="wrap_content"
 	android:layout_height="wrap_content"
 	android:visibility="gone"
 	>
-<Button
+<Button android:id="@+id/save"
 	android:layout_width="wrap_content"
 	android:layout_height="wrap_content"
 	android:text="@string/save_settings"
 	/>
-<Button
+<Button android:id="@+id/revert"
 	android:layout_width="wrap_content"
 	android:layout_height="wrap_content"
 	android:text="@string/reset_settings"
