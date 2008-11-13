@@ -11,9 +11,6 @@ public class MusicBroadcastReceiver extends BroadcastReceiver {
 	public void onReceive(Context context, Intent intent) {
 		Log.v("Scrob", intent.toString());
 		Log.v("ScrobE", intent.getExtras().keySet().toString());
-		
-		context.sendBroadcast(
-			new Intent(ScrobblerConfig.UINOTIFICATION_ACTION));
 	}
 
 }
