@@ -1,10 +1,15 @@
 package net.jjc1138.android.scrobbler;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -13,6 +18,9 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 
 public class ScrobblerConfig extends Activity {
+	public static final String UINOTIFICATION_ACTION =
+		"net.jjc1138.android.scrobbler.action.uinotification";
+	
 	SharedPreferences prefs;
 	SharedPreferences unsaved;
 
@@ -22,6 +30,17 @@ public class ScrobblerConfig extends Activity {
 	EditText password;
 
 	LinearLayout settingsChanged;
+	
+	public class ScrobblerNotificationReceiver extends BroadcastReceiver {
+
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			Log.v("ScrobAct", "Received broadcast.");
+		}
+		
+	};
+	private BroadcastReceiver notificationReceiver =
+		new ScrobblerNotificationReceiver();
 	
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -110,14 +129,6 @@ public class ScrobblerConfig extends Activity {
 	}
 
 	@Override
-	protected void onPause() {
-		super.onPause();
-		if (settingsChanged.getVisibility() == View.VISIBLE) {
-			uiToPrefs(unsaved);
-		}
-	}
-
-	@Override
 	protected void onResume() {
 		super.onResume();
 		
@@ -136,5 +147,18 @@ public class ScrobblerConfig extends Activity {
 			// Store defaults:
 			uiToPrefs(prefs);
 		}
+		
+		registerReceiver(notificationReceiver, new IntentFilter(
+			UINOTIFICATION_ACTION));
+	}
+
+	@Override
+	protected void onPause() {
+		super.onPause();
+		if (settingsChanged.getVisibility() == View.VISIBLE) {
+			uiToPrefs(unsaved);
+		}
+		
+		unregisterReceiver(notificationReceiver);
 	}
 }
