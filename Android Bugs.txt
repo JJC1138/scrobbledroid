@@ -1,0 +1,1 @@
+Going to the playlist and changing tracks there doesn't send a metachanged broadcast. Neither does choosing a new track from the library.

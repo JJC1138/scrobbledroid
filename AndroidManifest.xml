@@ -11,5 +11,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-    </application>
+	    <receiver android:name=".MusicBroadcastReceiver">
+    		<intent-filter>
+	   			<action android:name="com.android.music.metachanged" />
+	   			<action android:name="com.android.music.playbackcomplete" />
+	   			<action android:name="com.android.music.playstatechanged" />
+			</intent-filter>
+    	</receiver>
+	</application>
 </manifest>
