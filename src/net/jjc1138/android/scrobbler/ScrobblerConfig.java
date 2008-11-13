@@ -1,8 +1,18 @@
 package net.jjc1138.android.scrobbler;
 
+import java.text.ChoiceFormat;
+import java.text.MessageFormat;
+
 import android.app.Activity;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.IBinder;
+import android.os.RemoteException;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
@@ -11,17 +21,81 @@ import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 
 public class ScrobblerConfig extends Activity {
-	SharedPreferences prefs;
-	SharedPreferences unsaved;
+	private SharedPreferences prefs;
+	private SharedPreferences unsaved;
 
-	CheckBox enable;
-	CheckBox immediate;
-	EditText username;
-	EditText password;
+	private CheckBox enable;
+	private CheckBox immediate;
+	private EditText username;
+	private EditText password;
 
-	LinearLayout settingsChanged;
+	private LinearLayout settingsChanged;
+	private TextView queue_status;
+	private Button scrobble_now;
+	private TextView scrobble_status;
+	
+	private final Handler handler = new Handler();
+	
+	private final IScrobblerServiceNotificationHandler.Stub notifier =
+		new IScrobblerServiceNotificationHandler.Stub() {
+			@Override
+			public void stateChanged(final int queueSize,
+				final boolean scrobbling, final int lastScrobbleResult)
+
+				throws RemoteException {
+
+				handler.post(new Runnable() {
+					@Override
+					public void run() {
+						queue_status.setText(MessageFormat.format(
+							new ChoiceFormat(getString(R.string.tracks_ready))
+								.format(queueSize), queueSize));
+						
+						scrobble_now.setVisibility(
+							(!scrobbling && queueSize > 0) ?
+								View.VISIBLE : View.GONE);
+						
+						scrobble_status.setVisibility(
+							(!scrobbling && lastScrobbleResult == 
+								ScrobblerService.NOT_YET_ATTEMPTED) ?
+
+							View.GONE : View.VISIBLE);
+
+						if (scrobbling) {
+							scrobble_status.setText(
+								getString(R.string.scrobbling_in_progress));
+						} else {
+							switch (lastScrobbleResult) {
+							case ScrobblerService.SUCCESSFUL:
+								scrobble_status.setText(getString(
+									R.string.scrobbling_successful));
+								break;
+							case ScrobblerService.FAILED_AUTH:
+								scrobble_status.setText(getString(
+									R.string.scrobbling_failed_auth));
+								break;
+							case ScrobblerService.FAILED_NET:
+								scrobble_status.setText(getString(
+									R.string.scrobbling_failed_net));
+								break;
+							case ScrobblerService.FAILED_OTHER:
+								scrobble_status.setText(getString(
+									R.string.scrobbling_failed_other));
+								break;
+							
+							default:
+								break;
+							}
+						}
+					}
+				});
+			}
+		};
+	private ServiceConnection serviceConnection;
+	private IScrobblerService service;
 	
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -57,6 +131,9 @@ public class ScrobblerConfig extends Activity {
 		password = (EditText) findViewById(R.id.password);
 
 		settingsChanged = (LinearLayout) findViewById(R.id.settings_changed);
+		queue_status = (TextView) findViewById(R.id.queue_status);
+		scrobble_now = (Button) findViewById(R.id.scrobble_now);
+		scrobble_status = (TextView) findViewById(R.id.scrobble_status);
 		
 		enable.setOnCheckedChangeListener(checkWatcher);
 		immediate.setOnCheckedChangeListener(checkWatcher);
@@ -115,6 +192,10 @@ public class ScrobblerConfig extends Activity {
 		if (settingsChanged.getVisibility() == View.VISIBLE) {
 			uiToPrefs(unsaved);
 		}
+		try {
+			service.unregisterNotificationHandler(notifier);
+		} catch (RemoteException e) {}
+		unbindService(serviceConnection);
 	}
 
 	@Override
@@ -136,5 +217,22 @@ public class ScrobblerConfig extends Activity {
 			// Store defaults:
 			uiToPrefs(prefs);
 		}
+		
+		serviceConnection = new ServiceConnection() {
+			@Override
+			public void onServiceConnected(ComponentName comp, IBinder binder) {
+				service = IScrobblerService.Stub.asInterface(binder);
+				try {
+					service.registerNotificationHandler(notifier);
+				} catch (RemoteException e) {
+					// TODO Not sure what to do here.
+				}
+			}
+
+			@Override
+			public void onServiceDisconnected(ComponentName comp) {}
+		};
+		bindService(new Intent(this, ScrobblerService.class),
+			serviceConnection, Context.BIND_AUTO_CREATE);
 	}
 }

@@ -8,9 +8,11 @@
 <string name="password">Password</string>
 <string name="save_settings">Apply/save settings</string>
 <string name="reset_settings">Reset to saved settings</string>
-<string name="no_tracks_ready">No tracks are waiting to be scrobbled. They are added here after they finish playing.</string>
-<string name="one_track_ready">There is one track waiting to be scrobbled.</string>
-<string name="many_tracks_ready">There are {0} tracks waiting to be scrobbled.</string>
+<string name="tracks_ready">0#No tracks are waiting to be scrobbled. They are added here after they finish playing.| 1#There is one track waiting to be scrobbled.| 1&lt;There are {0} tracks waiting to be scrobbled.</string>
 <string name="scrobble_now">Start scrobbling now</string>
 <string name="scrobbling_in_progress">Scrobbling is in progress...</string>
+<string name="scrobbling_successful">Scrobbling was successful.</string>
+<string name="scrobbling_failed_auth">Scrobbling failed because the username or password is incorrect. Please check them.</string>
+<string name="scrobbling_failed_net">Scrobbling failed because of a network error.</string>
+<string name="scrobbling_failed_other">Scrobbling failed for an unknown reason.</string>
 </resources>

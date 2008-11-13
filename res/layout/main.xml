@@ -1,53 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="fill_parent"
-    android:layout_height="fill_parent"
-    >
+	android:layout_width="fill_parent"
+	android:layout_height="fill_parent"
+	>
 <LinearLayout
-    android:orientation="vertical"
-    android:layout_width="fill_parent"
-    android:layout_height="fill_parent"
-    >
+	android:orientation="vertical"
+	android:layout_width="fill_parent"
+	android:layout_height="fill_parent"
+	>
 <CheckBox android:id="@+id/enable"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:text="@string/enable"
-    android:checked="true"
-    />
+	android:layout_width="wrap_content"
+	android:layout_height="wrap_content"
+	android:text="@string/enable"
+	android:checked="true"
+	/>
 <CheckBox android:id="@+id/immediate"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:text="@string/immediate"
-    android:checked="false"
-    />
+	android:layout_width="wrap_content"
+	android:layout_height="wrap_content"
+	android:text="@string/immediate"
+	android:checked="false"
+	/>
 <TextView
-    android:layout_width="fill_parent"
-    android:layout_height="wrap_content"
-    android:text="@string/user_settings"
-    style="?android:listSeparatorTextViewStyle"
-    android:layout_marginTop="15sp"
-    />
+	android:layout_width="fill_parent"
+	android:layout_height="wrap_content"
+	android:text="@string/user_settings"
+	style="?android:listSeparatorTextViewStyle"
+	android:layout_marginTop="15sp"
+	/>
 <TextView
-    android:layout_width="fill_parent"
-    android:layout_height="wrap_content"
-    android:text="@string/username"
-    />
+	android:layout_width="fill_parent"
+	android:layout_height="wrap_content"
+	android:text="@string/username"
+	/>
 <EditText android:id="@+id/username"
-    android:layout_width="fill_parent"
-    android:layout_height="wrap_content"
-    android:singleLine="true"
-    />
+	android:layout_width="fill_parent"
+	android:layout_height="wrap_content"
+	android:singleLine="true"
+	/>
 <TextView
-    android:layout_width="fill_parent"
-    android:layout_height="wrap_content"
-    android:text="@string/password"
-    />
+	android:layout_width="fill_parent"
+	android:layout_height="wrap_content"
+	android:text="@string/password"
+	/>
 <EditText android:id="@+id/password"
-    android:layout_width="fill_parent"
-    android:layout_height="wrap_content"
-    android:password="true"
-    android:singleLine="true"
-    />
+	android:layout_width="fill_parent"
+	android:layout_height="wrap_content"
+	android:password="true"
+	android:singleLine="true"
+	/>
 <LinearLayout android:id="@+id/settings_changed"
 	android:orientation="horizontal"
 	android:layout_width="wrap_content"
@@ -65,23 +65,21 @@
 	android:text="@string/reset_settings"
 	/>
 </LinearLayout>
-<TextView
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:layout_marginTop="15sp"
-    android:text="@string/no_tracks_ready"
-    />
-<Button
-    android:layout_width="fill_parent"
-    android:layout_height="wrap_content"
-    android:text="@string/scrobble_now"
-    android:visibility="gone"
-    />
-<TextView
-    android:layout_width="fill_parent"
-    android:layout_height="wrap_content"
-    android:text="@string/scrobbling_in_progress"
-    android:visibility="gone"
-    />
+<TextView android:id="@+id/queue_status"
+	android:layout_width="wrap_content"
+	android:layout_height="wrap_content"
+	android:layout_marginTop="15sp"
+	/>
+<Button android:id="@+id/scrobble_now"
+	android:layout_width="wrap_content"
+	android:layout_height="wrap_content"
+	android:text="@string/scrobble_now"
+	android:visibility="gone"
+	/>
+<TextView android:id="@+id/scrobble_status"
+	android:layout_width="fill_parent"
+	android:layout_height="wrap_content"
+	android:visibility="gone"
+	/>
 </LinearLayout>
 </ScrollView>
