@@ -107,7 +107,8 @@ public class ScrobblerConfig extends Activity {
 			
 			@Override
 			public void onCheckedChanged(CompoundButton buttonView,
-					boolean isChecked) {
+				boolean isChecked) {
+
 				settingsChanged();
 			}
 		};
@@ -118,10 +119,10 @@ public class ScrobblerConfig extends Activity {
 			}
 			@Override
 			public void beforeTextChanged(CharSequence s, int start, int count,
-					int after) {}
+				int after) {}
 			@Override
 			public void onTextChanged(CharSequence s, int start, int before,
-					int count) {}
+				int count) {}
 		};
 		
 		setContentView(R.layout.main);
