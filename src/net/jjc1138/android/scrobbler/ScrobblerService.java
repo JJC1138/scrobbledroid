@@ -64,9 +64,11 @@ public class ScrobblerService extends Service {
 	@Override
 	public void onStart(Intent intent, int startId) {
 		super.onStart(intent, startId);
+		
+		// TODO Don't forget to handle (maliciously) malformed Intents.
 		Log.v(LOG_TAG,
 			((intent.getBooleanExtra("playing", false) ? "playing" : "stopped")
-			+ " track " + intent.getIntExtra("trackID", -1)));
+			+ " track " + intent.getIntExtra("id", -1)));
 	}
 
 }

@@ -1,0 +1,2 @@
+Building requires the interface file IMediaPlaybackService.aidl from the Android source to be in the directory src/com/android/music. It can be downloaded from:
+http://android.git.kernel.org/?p=platform/packages/apps/Music.git;a=blob_plain;f=src/com/android/music/IMediaPlaybackService.aidl;hb=HEAD

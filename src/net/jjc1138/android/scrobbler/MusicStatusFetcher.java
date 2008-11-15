@@ -33,7 +33,7 @@ public class MusicStatusFetcher extends Service {
 				Intent i = new Intent(StatusBroadcastReceiver.ACTION);
 				try {
 					i.putExtra("playing", s.isPlaying());
-					i.putExtra("trackID", s.getAudioId());
+					i.putExtra("id", s.getAudioId());
 				} catch (RemoteException e) {
 					i.putExtra("playing", false);
 				}

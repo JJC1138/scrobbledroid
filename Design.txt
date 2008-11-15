@@ -1,16 +1,22 @@
-BroadcastReceiver receives notifications about new tracks. It passes them immediately to the Service (which is spawned if it doesn't exist yet).
+We have defined a simple type of broadcast that music players can use to update other apps about their current status (net.jjc1138.android.musicplayerstatus). It should be sent at least when playback starts, when the current track changes, and when the player is paused so that nothing is currently playing. Sending it more often doesn't do any harm. Every broadcast must contain the "playing" extra, which is a boolean saying whether music is currently playing or not. Every broadcast where "playing" is true must also have details about the current track that is playing. This can either be "id", which is an int which indicates the track's ID in the MediaStore, or the actual metadata for the track as Strings ("track", "artist", "album", etc.).
 
-The service should be alive while a track is playing, or while there are tracks waiting to be scrobbled. If the service gets notification that a track has stopped and it doesn't need to be scrobbled (because it wasn't playing for long enough) then it will just drop it. If that happens and the scrobbling queue is empty then the service will quit. If scrobbling completes and there is nothing playing then the service will quit.
+This type of broadcast is received by StatusBroadcastReceiver and immediately passed on to the ScrobblerService (which is started if it isn't running already). The ScrobblerService decides when to enqueue a track for scrobbling, and also performs the actual scrobbling itself.
 
-The UI can communicate with the Service. It can tell it:
+We also receive the status change broadcasts that are sent from the Music app. They are received by MusicBroadcastReceiver. Unfortunately these broadcasts don't say whether music is currently playing or not, and the Music app doesn't send broadcasts consistently on every possible event so we can't figure it out on or own. To work around this MusicBroadcastReceiver starts another service (MusicStatusFetcher), which connects to the MediaPlaybackService. MusicStatusFetcher finds the currently playing track ID and the the playing status and sends a net.jjc1138.android.musicplayerstatus broadcast with this information, and that broadcast is handled like any other.
+
+
+
+The ScrobblerService should be alive while a track is playing, or while there are tracks waiting to be scrobbled. If the ScrobblerService gets notification that a track has stopped and it doesn't need to be scrobbled (because it wasn't playing for long enough) then it will keep details of that track in case it is resumed later. If there is nothing playing and the scrobbling queue is empty then the ScrobblerService will quit. If scrobbling completes and there is nothing playing then the ScrobblerService will quit. If there is a partially played and unscrobbled track when it quits then it will save the details of that track in case it is resumed later.
+
+The Activity can communicate with the ScrobblerService. It can tell it:
  that the preferences have changed.
  that the user has requested a scrobble.
-The Service will also communicate with the UI. It will do this when:
- a new track is added to the scrobble queue. It tells the UI how many there are.
+The ScrobblerService will also communicate with the Activity. It will do this when:
+ a new track is added to the scrobble queue. It tells the Activity how many there are.
  scrobbling starts.
- scrobbling finishes or fails. It tells the UI whether it was successful or not.
+ scrobbling finishes or fails. It tells the Activity whether it was successful or not.
 
-When the UI is hidden it stores the current uncommitted preferences if they've been changed.
-When the Service is told that it will be shutdown (how?), it saves the current scrobbling queue to a file.
+When the Activity is hidden it stores the current uncommitted preferences if they've been changed.
+When the ScrobblerService is told that it will be shutdown (how?), it saves the current scrobbling queue to a file.
 
-When the Activity starts (resumes) it makes a connection to the Service. When the Service gets the connection it immediately updates the Activity about what is going on right now (how many tracks in the queue/are we scrobbling/was the last scrobble successful).
+When the Activity starts (or resumes) it makes a connection to the ScrobblerService. When the ScrobblerService gets the connection it immediately updates the Activity about what is going on right now (how many tracks in the queue/are we scrobbling/was the last scrobble successful).

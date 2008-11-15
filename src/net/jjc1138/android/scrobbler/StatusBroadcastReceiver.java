@@ -5,8 +5,8 @@ import android.content.Context;
 import android.content.Intent;
 
 public class StatusBroadcastReceiver extends BroadcastReceiver {
-	public static final String ACTION = "net.jjc1138.android.scrobbler.status";
-	
+	public static final String ACTION = "net.jjc1138.android.musicplayerstatus";
+
 	@Override
 	public void onReceive(Context context, Intent in) {
 		Intent out = new Intent(context, ScrobblerService.class);
