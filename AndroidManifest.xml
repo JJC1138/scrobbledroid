@@ -12,7 +12,7 @@
 		</activity>
 		<receiver android:name=".StatusBroadcastReceiver">
 			<intent-filter>
-				<action android:name="net.jjc1138.android.scrobbler.status" />
+				<action android:name="net.jjc1138.android.musicplayerstatus" />
 			</intent-filter>
 		</receiver>
 		<service android:name=".ScrobblerService" />
