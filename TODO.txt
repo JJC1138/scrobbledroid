@@ -1,1 +1,5 @@
 Links to sign-up page and profile page.
+Add copyright/license notices where necessary.
+Make an icon.
+Static helper methods that simplify sending broadcasts for other players.
+Can we use permissions to stop people starting our services (for the sake of minimizing the public interface)?

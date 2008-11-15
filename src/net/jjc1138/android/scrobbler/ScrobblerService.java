@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.os.IBinder;
 import android.os.RemoteCallbackList;
 import android.os.RemoteException;
+import android.util.Log;
 
 public class ScrobblerService extends Service {
 	static final String LOG_TAG = "ScrobbleDroid";
@@ -58,6 +59,14 @@ public class ScrobblerService extends Service {
 	@Override
 	public IBinder onBind(Intent intent) {
 		return binder;
+	}
+
+	@Override
+	public void onStart(Intent intent, int startId) {
+		super.onStart(intent, startId);
+		Log.v(LOG_TAG,
+			((intent.getBooleanExtra("playing", false) ? "playing" : "stopped")
+			+ " track " + intent.getIntExtra("trackID", -1)));
 	}
 
 }

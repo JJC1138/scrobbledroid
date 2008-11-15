@@ -10,6 +10,13 @@
 				<category android:name="android.intent.category.LAUNCHER" />
 			</intent-filter>
 		</activity>
+		<receiver android:name=".StatusBroadcastReceiver">
+			<intent-filter>
+				<action android:name="net.jjc1138.android.scrobbler.status" />
+			</intent-filter>
+		</receiver>
+		<service android:name=".ScrobblerService" />
+
 		<receiver android:name=".MusicBroadcastReceiver">
 			<intent-filter>
 				<action android:name="com.android.music.metachanged" />
@@ -17,6 +24,6 @@
 				<action android:name="com.android.music.playstatechanged" />
 			</intent-filter>
 		</receiver>
-		<service android:name=".ScrobblerService" />
+		<service android:name=".MusicStatusFetcher" />
 	</application>
 </manifest>
