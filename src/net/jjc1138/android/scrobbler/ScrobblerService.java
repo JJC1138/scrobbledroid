@@ -108,7 +108,7 @@ public class ScrobblerService extends Service {
 		new LinkedBlockingQueue<QueueEntry>();
 
 	private QueueEntry lastPlaying = null;
-	private boolean nowPaused = false;
+	private boolean lastPlayingWasPaused = false;
 	private long lastPlayingTimePlayed = 0;
 	private long lastResumedTime = -1;
 
@@ -163,7 +163,7 @@ public class ScrobblerService extends Service {
 
 	private void newTrackStarted(Track t, long now) {
 		this.lastPlaying = new QueueEntry(t, now);
-		nowPaused = false;
+		lastPlayingWasPaused = false;
 		lastPlayingTimePlayed = 0;
 		lastResumedTime = now;
 		Log.v(LOG_TAG, "New track started.");
@@ -198,51 +198,40 @@ public class ScrobblerService extends Service {
 			if (lastPlaying == null) {
 				newTrackStarted(t, now);
 			} else {
-				if (nowPaused) {
-					// lastPlaying track was paused.
-					if (lastPlaying.getTrack().equals(t)) {
+				if (lastPlaying.getTrack().equals(t)) {
+					if (lastPlayingWasPaused) {
 						lastResumedTime = now;
-						nowPaused = false;
+						lastPlayingWasPaused = false;
 						Log.v(LOG_TAG, "Previously paused track resumed.");
 					} else {
-						if (playTimeEnoughForScrobble()) {
-							queue.add(lastPlaying);
-							updatedQueue();
-							Log.v(LOG_TAG, "Enqueued previously paused track.");
-						} else {
-							Log.v(LOG_TAG, "Previously paused track wasn't " +
-								"playing long enough to scrobble.");
-						}
-						newTrackStarted(t, now);
+						// lastPlaying track is still playing: NOOP.
 					}
 				} else {
-					if (lastPlaying.getTrack().equals(t)) {
-						// lastPlaying track is still playing: NOOP.
-					} else {
-						// Change of track. Check if we can scrobble the old
-						// one.
+					if (!lastPlayingWasPaused) {
 						lastPlayingTimePlayed += now - lastResumedTime;
-						if (playTimeEnoughForScrobble()) {
-							queue.add(lastPlaying);
-							updatedQueue();
-							Log.v(LOG_TAG,
-								"Enqueued previously playing track.");
-						} else {
-							Log.v(LOG_TAG, "Previously playing track wasn't " +
-								"playing long enough to scrobble.");
-						}
-						newTrackStarted(t, now);
 					}
+					final String logState = lastPlayingWasPaused ?
+						"paused" : "playing";
+					if (playTimeEnoughForScrobble()) {
+						queue.add(lastPlaying);
+						updatedQueue();
+						Log.v(LOG_TAG,
+							"Enqueued previously " + logState + " track.");
+					} else {
+						Log.v(LOG_TAG, "Previously " + logState +
+							" track wasn't playing long enough to scrobble.");
+					}
+					newTrackStarted(t, now);
 				}
 			}
 		} else {
 			// Paused/stopped.
-			if (lastPlaying == null || nowPaused) {
+			if (lastPlaying == null || lastPlayingWasPaused) {
 				// We weren't playing before and we aren't playing now: NOOP.
 			} else {
 				// A track is currently playing.
 				lastPlayingTimePlayed += now - lastResumedTime;
-				nowPaused = true;
+				lastPlayingWasPaused = true;
 				Log.v(LOG_TAG, "Track paused. Total play time so far is " +
 					lastPlayingTimePlayed + ".");
 			}
