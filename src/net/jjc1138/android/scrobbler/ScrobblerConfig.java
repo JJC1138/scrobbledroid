@@ -104,7 +104,7 @@ public class ScrobblerConfig extends Activity {
 		};
 	private ServiceConnection serviceConnection;
 	private IScrobblerService service;
-	
+
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -116,7 +116,7 @@ public class ScrobblerConfig extends Activity {
 			@Override
 			public void onCheckedChanged(CompoundButton buttonView,
 				boolean isChecked) {
-
+				
 				settingsChanged();
 			}
 		};
@@ -138,7 +138,7 @@ public class ScrobblerConfig extends Activity {
 		immediate = (CheckBox) findViewById(R.id.immediate);
 		username = (EditText) findViewById(R.id.username);
 		password = (EditText) findViewById(R.id.password);
-
+		
 		settingsChanged = (LinearLayout) findViewById(R.id.settings_changed);
 		queue_status = (TextView) findViewById(R.id.queue_status);
 		scrobble_now = (Button) findViewById(R.id.scrobble_now);
