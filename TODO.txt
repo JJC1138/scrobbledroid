@@ -5,5 +5,4 @@ Static helper methods that simplify sending broadcasts for other players.
 Can we use permissions to stop people starting our services (for the sake of minimizing the public interface)?
 Love/ban/skip.
 Add information to the UI about when scrobbling will take place.
-Add UI strings and interface constants for the BANNED and BADTIME handshake responses.
 Add notifications for important handshake failures that require user action (BANNED, BADAUTH, BADTIME).

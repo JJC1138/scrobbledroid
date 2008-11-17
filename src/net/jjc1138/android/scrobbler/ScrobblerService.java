@@ -93,11 +93,13 @@ class QueueEntry {
 
 public class ScrobblerService extends Service {
 	static final String LOG_TAG = "ScrobbleDroid";
-	static final int SUCCESSFUL = 0;
+	static final int OK = 0;
 	static final int NOT_YET_ATTEMPTED = 1;
-	static final int FAILED_AUTH = 2;
-	static final int FAILED_NET = 3;
-	static final int FAILED_OTHER = 4;
+	static final int BANNED = 2;
+	static final int BADAUTH = 3;
+	static final int BADTIME = 4;
+	static final int FAILED_NET = 5;
+	static final int FAILED_OTHER = 6;
 
 	final RemoteCallbackList<IScrobblerServiceNotificationHandler>
 		notificationHandlers =
@@ -146,7 +148,8 @@ public class ScrobblerService extends Service {
 
 		@Override
 		public void prefsUpdated() throws RemoteException {
-			// TODO Auto-generated method stub
+			// TODO Remove the cached session ID (if any) to force a
+			// rehandshake on the next scrobble.
 		}
 
 		@Override
@@ -155,7 +158,7 @@ public class ScrobblerService extends Service {
 		}
 
 	};
-	
+
 	@Override
 	public IBinder onBind(Intent intent) {
 		return binder;

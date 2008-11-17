@@ -11,8 +11,10 @@
 <string name="tracks_ready">0#No tracks are waiting to be scrobbled. They are added here after they finish playing.| 1#There is one track waiting to be scrobbled.| 1&lt;There are {0} tracks waiting to be scrobbled.</string>
 <string name="scrobble_now">Start scrobbling now</string>
 <string name="scrobbling_in_progress">Scrobbling is in progress...</string>
-<string name="scrobbling_successful">Scrobbling was successful.</string>
-<string name="scrobbling_failed_auth">Scrobbling failed because the username or password is incorrect. Please check them.</string>
+<string name="scrobbling_ok">Scrobbling was successful.</string>
+<string name="scrobbling_banned">This version of this application is no longer allowed to scrobble. Please try upgrading to a newer version if one is available.</string>
+<string name="scrobbling_badauth">Scrobbling failed because the username or password is incorrect. Please check them.</string>
+<string name="scrobbling_badtime">The time or the timezone on this device appears to be incorrect. Please check them.</string>
 <string name="scrobbling_failed_net">Scrobbling failed because of a network error.</string>
 <string name="scrobbling_failed_other">Scrobbling failed for an unknown reason.</string>
 </resources>

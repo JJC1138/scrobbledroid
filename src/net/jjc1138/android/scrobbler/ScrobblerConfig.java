@@ -69,13 +69,21 @@ public class ScrobblerConfig extends Activity {
 								getString(R.string.scrobbling_in_progress));
 						} else {
 							switch (lastScrobbleResult) {
-							case ScrobblerService.SUCCESSFUL:
+							case ScrobblerService.OK:
 								scrobble_status.setText(getString(
-									R.string.scrobbling_successful));
+									R.string.scrobbling_ok));
 								break;
-							case ScrobblerService.FAILED_AUTH:
+							case ScrobblerService.BANNED:
 								scrobble_status.setText(getString(
-									R.string.scrobbling_failed_auth));
+									R.string.scrobbling_banned));
+								break;
+							case ScrobblerService.BADAUTH:
+								scrobble_status.setText(getString(
+									R.string.scrobbling_badauth));
+								break;
+							case ScrobblerService.BADTIME:
+								scrobble_status.setText(getString(
+									R.string.scrobbling_badtime));
 								break;
 							case ScrobblerService.FAILED_NET:
 								scrobble_status.setText(getString(
