@@ -108,7 +108,7 @@ public class ScrobblerConfig extends Activity {
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		prefs = getSharedPreferences("prefs", 0);
+		prefs = getSharedPreferences(ScrobblerService.PREFS, 0);
 		unsaved = getSharedPreferences("unsaved", 0);
 		CompoundButton.OnCheckedChangeListener checkWatcher =
 			new CompoundButton.OnCheckedChangeListener() {
@@ -154,6 +154,9 @@ public class ScrobblerConfig extends Activity {
 				public void onClick(View v) {
 					uiToPrefs(prefs);
 					settingsChanged.setVisibility(View.GONE);
+					try {
+						service.prefsUpdated();
+					} catch (RemoteException e) {}
 				}
 			});
 		((Button) findViewById(R.id.revert)).setOnClickListener(
@@ -164,6 +167,14 @@ public class ScrobblerConfig extends Activity {
 					settingsChanged.setVisibility(View.GONE);
 				}
 			});
+		scrobble_now.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				try {
+					service.startScrobble();
+				} catch (RemoteException e) {}
+			}
+		});
 	}
 
 	protected void settingsChanged() {

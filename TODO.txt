@@ -5,3 +5,8 @@ Static helper methods that simplify sending broadcasts for other players.
 Love/ban/skip.
 Add information to the UI about when scrobbling will take place.
 Add notifications for important handshake failures that require user action (BANNED, BADAUTH, BADTIME).
+Add time of last scrobble to UI.
+Replace magic strings with constants so that they can be refactored easily.
+Make it so that when scrobbling is disabled we still keep track of what's going, but just doesn't enqueue.
+Save the queue when shutting down. Load it again when starting.
+Check on system startup whether there is a saved queue. If there is then start a scrobble immediately.
