@@ -17,40 +17,132 @@ import android.os.RemoteException;
 import android.provider.MediaStore;
 import android.util.Log;
 
-class IncompleteMetadataException extends Exception {
+class InvalidMetadataException extends Exception {
+	private static final long serialVersionUID = 1L;	
+}
+class IncompleteMetadataException extends InvalidMetadataException {
 	private static final long serialVersionUID = 1L;
 }
 
 class Track {
-	public Track(Intent i, Context c) throws IncompleteMetadataException {
+	private final String sources = "PRELU";
+
+	public Track(Intent i, Context c) throws InvalidMetadataException {
+		String source = i.getStringExtra("source");
+		if (source == null || source.length() < 1) {
+			this.source = 'P';
+		} else {
+			this.source = source.charAt(0);
+			if (sources.indexOf(this.source) == -1) {
+				throw new InvalidMetadataException();
+			}
+		}
+		
 		id = i.getIntExtra("id", -1);
 		
 		if (id != -1) {
-			// TODO Only fetch the columns we use.
+			final String[] columns = new String[] {
+				MediaStore.Audio.AudioColumns.ARTIST,
+				MediaStore.Audio.AudioColumns.TITLE,
+				MediaStore.Audio.AudioColumns.DURATION,
+				MediaStore.Audio.AudioColumns.ALBUM,
+				MediaStore.Audio.AudioColumns.TRACK,
+			};
 			Cursor cur = c.getContentResolver().query(
 				ContentUris.withAppendedId(
 					MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id),
-				null, null, null, null);
+				columns, null, null, null);
 			try {
 				if (cur == null) {
 					throw new NoSuchElementException();
 				}
-				
 				cur.moveToFirst();
+				// TODO Find out what happens when this stuff is absent from the
+				// metadata DB.
+				artist = cur.getString(cur.getColumnIndex(
+					MediaStore.Audio.AudioColumns.ARTIST));
+				track = cur.getString(cur.getColumnIndex(
+					MediaStore.Audio.AudioColumns.TITLE));
 				length = cur.getLong(cur.getColumnIndex(
 					MediaStore.Audio.AudioColumns.DURATION));
+				album = cur.getString(cur.getColumnIndex(
+					MediaStore.Audio.AudioColumns.ALBUM));
+				tracknumber = cur.getInt(cur.getColumnIndex(
+					MediaStore.Audio.AudioColumns.TRACK));
 			} finally {
 				cur.close();
 			}
 		} else {
-			// TODO Add support for fully specified metadata. Throw if it is
-			// incomplete.
-			throw new IncompleteMetadataException();
+			// TODO Test this:
+			
+			// These are required:
+			artist = i.getStringExtra("artist");
+			if (artist == null || artist.length() == 0) {
+				throw new IncompleteMetadataException();
+			}
+			track = i.getStringExtra("track");
+			if (track == null || track.length() == 0) {
+				throw new IncompleteMetadataException();
+			}
+			
+			// This is required if source is P:
+			length = new Long(i.getIntExtra("secs", -1));
+			if (length == -1) {
+				if (this.source == 'P') {
+					throw new IncompleteMetadataException();
+				} else {
+					length = null;
+				}
+			} else {
+				length *= 1000; // We store in milliseconds.
+			}
+			
+			// These are optional:
+			album = i.getStringExtra("album");
+			if (album.length() == 0) {
+				album = null;
+			}
+			tracknumber = i.getIntExtra("tracknumber", -1);
+			if (tracknumber == -1) {
+				tracknumber = null;
+			}
+			mbtrackid = i.getStringExtra("mb-trackid");
+			if (mbtrackid.length() == 0) {
+				mbtrackid = null;
+			}
 		}
 	}
 
-	public long getLength() {
+	public String getArtist() {
+		return artist;
+	}
+
+	public String getTrack() {
+		return track;
+	}
+
+	public char getSource() {
+		return source;
+	}
+
+	public Long getMillis() {
 		return length;
+	}
+
+	public Long getSecs() {
+		return length == null ? null : length / 1000;
+	}
+
+	public String getAlbum() {
+		return album;
+	}
+
+	public Integer getTracknumber() {
+		return tracknumber;
+	}
+
+	public String getMbtrackid() {
+		return mbtrackid;
 	}
 
 	@Override
@@ -62,8 +154,14 @@ class Track {
 		if (id != -1) {
 			return id == other.id;
 		}
-		// TODO Check other metadata fields.
-		return false;
+		return
+			artist == other.artist &&
+			track == other.track &&
+			source == other.source &&
+			length == other.length &&
+			album == other.album &&
+			tracknumber == other.tracknumber &&
+			mbtrackid == other.mbtrackid;
 	}
 
 	@Override
@@ -73,12 +171,19 @@ class Track {
 
 	@Override
 	public String toString() {
-		// TODO Add metadata.
-		return "Track " + id;
+		String s = (id == -1) ? "" : "(" + id + ") ";
+		return s + artist + " - " + track;
 	}
 
 	private int id;
-	private long length;
+
+	private String artist;
+	private String track;
+	private char source;
+	private Long length;
+	private String album;
+	private Integer tracknumber;
+	private String mbtrackid;
 }
 
 class QueueEntry {
@@ -138,9 +243,7 @@ public class ScrobblerService extends Service {
 	private Handler handler;
 	private boolean bound = false;
 	// This is the time of the last "meaningful" event, i.e. a track that was
-	// playing being paused, or vice-versa, or a new track being played. So this
-	// is the last time the user actually did something (or accepted something
-	// happening, as in the case of changing to the next track in a playlist).
+	// playing being paused, or vice-versa, or a new track being played.
 	private long lastEventTime = -1;
 
 	@Override
@@ -148,6 +251,15 @@ public class ScrobblerService extends Service {
 		super.onCreate();
 		prefs = getSharedPreferences(PREFS, 0);
 		handler = new Handler();
+		
+		// TODO Load saved queue if there is one and then delete the file.
+		// TODO Load saved lastPlaying if there is one and then delete the file.
+	}
+
+	@Override
+	public void onDestroy() {
+		super.onDestroy();
+		// TODO Save queue if there is one.
 	}
 
 	private boolean isScrobbling() {
@@ -231,7 +343,7 @@ public class ScrobblerService extends Service {
 		// Put some wiggle room in to compensate for the imprecision of our
 		// timekeeping.
 		long v =
-			lastPlayingTimePlayed - lastPlaying.getTrack().getLength();
+			lastPlayingTimePlayed - lastPlaying.getTrack().getMillis();
 		long a = Math.abs(v);
 		if (a < 30000) {
 			Log.d(LOG_TAG, "Whole track timing error: " + v);
@@ -243,8 +355,17 @@ public class ScrobblerService extends Service {
 		final long playTime = lastPlayingTimePlayed;
 		// For debugging:
 		//return playTime >= 5000;
-		return playTime >= 30000 && ((playTime >= 240000) ||
-			(playTime >= lastPlaying.getTrack().getLength() / 2));
+		if (playTime < 30000) {
+			return false;
+		}
+		if (playTime >= 240000) {
+			return true;
+		}
+		Long length = lastPlaying.getTrack().getMillis();
+		if (length == null) {
+			length = 1000L;
+		}
+		return playTime >= (length / 2);
 	}
 
 	private void handleIntent(Intent intent) {
@@ -262,7 +383,7 @@ public class ScrobblerService extends Service {
 		Track t;
 		try {
 			t = new Track(intent, this);
-		} catch (IncompleteMetadataException e) {
+		} catch (InvalidMetadataException e) {
 			return;
 		} catch (NoSuchElementException e) {
 			return;

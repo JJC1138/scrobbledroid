@@ -244,9 +244,7 @@ public class ScrobblerConfig extends Activity {
 				service = IScrobblerService.Stub.asInterface(binder);
 				try {
 					service.registerNotificationHandler(notifier);
-				} catch (RemoteException e) {
-					// TODO Not sure what to do here.
-				}
+				} catch (RemoteException e) {}
 			}
 
 			@Override
