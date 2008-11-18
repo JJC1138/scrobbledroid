@@ -100,9 +100,17 @@ class QueueEntry {
 }
 
 public class ScrobblerService extends Service {
+	// This is the maximum number of tracks that we can submit in one request:
+	static final int MAX_SCROBBLE_TRACKS = 50;
+	// This is the number of tracks that we will wait to have queued before we
+	// scrobble. It can be larger or smaller than MAX_SCROBBLE_TRACKS.
+	static final int SCROBBLE_BATCH_SIZE = MAX_SCROBBLE_TRACKS;
+	// This is how long we will wait after music has stopped playing before
+	// scrobbling.
+	static final int SCROBBLE_WAITING_TIME_MINUTES = 3;
+
 	static final String LOG_TAG = "ScrobbleDroid";
 	static final String PREFS = "prefs";
-	static final int SCROBBLE_WAITING_TIME_MINUTES = 3;
 
 	static final int OK = 0;
 	static final int NOT_YET_ATTEMPTED = 1;
@@ -416,7 +424,7 @@ public class ScrobblerService extends Service {
 		if (prefs.getBoolean("immediate", false)) {
 			return true;
 		}
-		if (queueSize >= 50) {
+		if (queueSize >= SCROBBLE_BATCH_SIZE) {
 			return true;
 		}
 		return false;
