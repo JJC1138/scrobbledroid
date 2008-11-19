@@ -785,7 +785,7 @@ public class ScrobblerService extends Service {
 		@Override
 		public void run() {
 			if (lastScrobbleResult == BANNED || lastScrobbleResult == BADAUTH) {
-				// TODO According to the spec. we should also refuse to
+				// TODOLATER According to the spec. we should also refuse to
 				// handshake after a BADTIME response until the clock has been
 				// changed, but we'll need to monitor for time changes to
 				// implement that.

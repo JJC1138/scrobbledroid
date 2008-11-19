@@ -54,9 +54,10 @@ public class ScrobblerConfig extends Activity {
 							new ChoiceFormat(getString(R.string.tracks_ready))
 								.format(queueSize), queueSize));
 						
-						// TODO BADTIME should also prevent further handshakes
-						// according to the spec., but we don't yet have a way
-						// of resetting from BADTIME when the time is updated.
+						// TODOLATER BADTIME should also prevent further
+						// handshakes according to the spec., but we don't yet
+						// have a way of resetting from BADTIME when the time is
+						// updated.
 						scrobble_now.setVisibility(
 							(!scrobbling && queueSize > 0 &&
 								lastScrobbleResult != ScrobblerService.BANNED &&
