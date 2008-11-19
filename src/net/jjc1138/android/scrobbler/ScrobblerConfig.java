@@ -36,17 +36,17 @@ public class ScrobblerConfig extends Activity {
 	private TextView queue_status;
 	private Button scrobble_now;
 	private TextView scrobble_status;
-	
+
 	private final Handler handler = new Handler();
-	
+
 	private final IScrobblerServiceNotificationHandler.Stub notifier =
 		new IScrobblerServiceNotificationHandler.Stub() {
 			@Override
 			public void stateChanged(final int queueSize,
 				final boolean scrobbling, final int lastScrobbleResult)
-
+				
 				throws RemoteException {
-
+				
 				handler.post(new Runnable() {
 					@Override
 					public void run() {
@@ -54,16 +54,21 @@ public class ScrobblerConfig extends Activity {
 							new ChoiceFormat(getString(R.string.tracks_ready))
 								.format(queueSize), queueSize));
 						
+						// TODO BADTIME should also prevent further handshakes
+						// according to the spec., but we don't yet have a way
+						// of resetting from BADTIME when the time is updated.
 						scrobble_now.setVisibility(
-							(!scrobbling && queueSize > 0) ?
-								View.VISIBLE : View.GONE);
+							(!scrobbling && queueSize > 0 &&
+								lastScrobbleResult != ScrobblerService.BANNED &&
+								lastScrobbleResult != ScrobblerService.BADAUTH)
+								? View.VISIBLE : View.GONE);
 						
 						scrobble_status.setVisibility(
 							(!scrobbling && lastScrobbleResult == 
 								ScrobblerService.NOT_YET_ATTEMPTED) ?
-
+							
 							View.GONE : View.VISIBLE);
-
+						
 						if (scrobbling) {
 							scrobble_status.setText(
 								getString(R.string.scrobbling_in_progress));

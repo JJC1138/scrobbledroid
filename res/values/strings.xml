@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-<string name="app_name">ScrobbleDroid</string>
+<string name="app_name">Scrobble Droid</string>
+<string name="app_version"><!-- Never localize this -->0.9</string>
 <string name="enable">Enable scrobbling</string>
 <string name="immediate">Scrobble each track as soon as possible (uses more battery power)</string>
 <string name="user_settings">Last.fm Account</string>

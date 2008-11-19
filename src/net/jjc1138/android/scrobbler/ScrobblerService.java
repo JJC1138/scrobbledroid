@@ -1,8 +1,26 @@
 package net.jjc1138.android.scrobbler;
 
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URLEncoder;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.NoSuchElementException;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.HttpVersion;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.params.BasicHttpParams;
+import org.apache.http.params.HttpParams;
+import org.apache.http.params.HttpProtocolParams;
+import org.apache.http.util.EntityUtils;
 
 import android.app.Service;
 import android.content.ContentUris;
@@ -204,9 +222,39 @@ class QueueEntry {
 	private long startTime;
 }
 
+class Session {
+	Session(String id, String submissionURL) {
+		this.id = id;
+		this.submissionURL = submissionURL;
+		this.valid = true;
+	}
+
+	public String getId() {
+		return id;
+	}
+
+	public String getSubmissionURL() {
+		return submissionURL;
+	}
+
+	public void invalidate() {
+		valid = false;
+	}
+
+	public boolean isValid() {
+		return valid;
+	}
+
+	private String id;
+	private String submissionURL;
+	private boolean valid;
+}
+
 public class ScrobblerService extends Service {
 	// This is the maximum number of tracks that we can submit in one request:
 	static final int MAX_SCROBBLE_TRACKS = 50;
+	static final long INITIAL_HANDSHAKE_RETRY_WAITING_TIME = 60000;
+
 	// This is the number of tracks that we will wait to have queued before we
 	// scrobble. It can be larger or smaller than MAX_SCROBBLE_TRACKS.
 	static final int SCROBBLE_BATCH_SIZE = MAX_SCROBBLE_TRACKS;
@@ -246,12 +294,31 @@ public class ScrobblerService extends Service {
 	// playing being paused, or vice-versa, or a new track being played.
 	private long lastEventTime = -1;
 
+	// This musn't be reassigned unless the caller holds the handshaking lock as
+	// described below. It is acceptable to invalidate() the Session without
+	// holding the lock.
+	private Session session;
+	// It would be bad if two threads were handshaking at the same time so
+	// anyone who wants to handshake must synchronize on the following object.
+	// After that lock is obtained, they must then check to see if the above
+	// Session isValid(). If so they should take their own copy of the reference
+	// to it, and then release the lock and attempt to use that Session. If it
+	// wasn't valid then they should handshake, store the new Session in the
+	// above variable and then release the lock.
+	private Object handshaking = new Object();
+
+	private int hardFailures = 0;
+	private long handshakeRetryWaitingTime =
+		INITIAL_HANDSHAKE_RETRY_WAITING_TIME;
+
 	@Override
 	public void onCreate() {
 		super.onCreate();
 		prefs = getSharedPreferences(PREFS, 0);
 		handler = new Handler();
 		
+		session = new Session("", "");
+		session.invalidate();
 		// TODO Load saved queue if there is one and then delete the file.
 		// TODO Load saved lastPlaying if there is one and then delete the file.
 	}
@@ -307,8 +374,16 @@ public class ScrobblerService extends Service {
 
 		@Override
 		public void prefsUpdated() throws RemoteException {
-			// TODO Remove the cached session ID (if any) to force a
-			// rehandshake on the next scrobble.
+			// Force a rehandshake on the next scrobble:
+			session.invalidate();
+			
+			if (lastScrobbleResult == BADAUTH) {
+				lastScrobbleResult = NOT_YET_ATTEMPTED;
+				updateAllClients();
+			}
+			
+			// TODO Remove this method from the interface and instead use
+			// SharedPreferences.registerOnSharedPreferenceChangeListener().
 		}
 
 		@Override
@@ -471,6 +546,11 @@ public class ScrobblerService extends Service {
 					//    assume that it was repeated. It gets enqueued again.
 					// In fact the user had only listened to 110% of the track
 					// so they probably don't want to scrobble it twice.
+					//
+					// Unfortunately the situation described above can still
+					// occur if the user has the immediate scrobbling mode
+					// switched on, but there doesn't seem to be an obvious way
+					// of avoiding it in that case.
 				}
 			}
 		}
@@ -558,27 +638,216 @@ public class ScrobblerService extends Service {
 		updateAllClients();
 	}
 
+	private static String toHexString(byte[] bytes) {
+		StringBuffer sb =
+			new StringBuffer(bytes.length * 2);
+		for (byte b : bytes) {
+			// Avoid sign extension:
+			int i = ((int)b) & 0x000000ff;
+			String h = Integer.toHexString(i);
+			if (h.length() == 1) {
+				h = '0' + h;
+			}
+			sb.append(h);
+		}
+		assert sb.length() == bytes.length * 2;
+		return sb.toString();
+	}
+
 	private class ScrobbleThread extends Thread {
+		final static String handshakeURL =
+			"http://post.audioscrobbler.com:80/";
+		final static String apiVersion = "1.2.1";
+		final static String encoding = "UTF-8";
+
+		final static String clientID = "tst";
+
 		private boolean inProgress = true;
+		private Session s = session;
+		private HttpClient client;
+
+		ScrobbleThread() {
+			this.setName("ScrobbleThread");
+			
+			HttpParams p = new BasicHttpParams();
+			HttpProtocolParams.setVersion(p, HttpVersion.HTTP_1_1);
+			client = new DefaultHttpClient(p);
+		}
+
+		private class HardFailure extends IOException {
+			private static final long serialVersionUID = 1L;
+		}
+
+		private class UserFailure extends Exception {
+			private static final long serialVersionUID = 1L;
+
+			public UserFailure(int reason) {
+				this.reason = reason;
+			}
+
+			public int getReason() {
+				return reason;
+			}
+
+			private int reason;
+		}
+
+		private String enc(String s) {
+			try {
+				return URLEncoder.encode(s, encoding);
+			} catch (UnsupportedEncodingException e) {
+				assert false;
+				return null;
+			}
+		}
+
+		private void handshake() throws IOException, HardFailure, UserFailure {
+			if (s.isValid()) {
+				Log.v(LOG_TAG, "Session appears to valid already.");
+				return;
+			}
+			synchronized (handshaking) {
+				if (session.isValid()) {
+					s = session;
+					return;
+				}
+				URI u = null;
+				try {
+					String timestamp = Long.toString(
+						System.currentTimeMillis() / 1000);
+					MessageDigest md5 = MessageDigest.getInstance("MD5");
+					byte[] passwordMD5 = md5.digest(
+						prefs.getString("password", null).getBytes(encoding));
+					md5.reset();
+					String token = toHexString(md5.digest(
+						(toHexString(passwordMD5) + timestamp).getBytes(
+							encoding)));
+					u = new URI(
+						handshakeURL + '?' +
+						"hs=true&" +
+						"p=" + enc(apiVersion) + '&' +
+						"c=" + enc(clientID) + '&' +
+						// The "tst" clientID has to use version "1.0":
+						"v=" + enc(clientID.equals("tst") ? "1.0" :
+							getString(R.string.app_version)) + '&' +
+						"u=" + enc(prefs.getString("username", null)) + '&' +
+						"t=" + enc(timestamp) + '&' +
+						"a=" + enc(token));
+				} catch (NoSuchAlgorithmException e) {
+					assert false;
+				} catch (UnsupportedEncodingException e) {
+					assert false;
+				} catch (URISyntaxException e) {
+					assert false;
+				}
+				
+				HttpResponse r = client.execute(new HttpGet(u));
+				if (r.getStatusLine().getStatusCode() != 200) {
+					throw new HardFailure();
+				}
+				HttpEntity e = r.getEntity();
+				String resp;
+				try {
+					resp = EntityUtils.toString(e, "US-ASCII");
+				} finally {
+					e.consumeContent();
+				}
+				String[] lines = resp.split("\n");
+				if (lines.length < 1) {
+					throw new HardFailure();
+				}
+				if (lines[0].equals("OK")) {
+					// Phew.
+				} else if (lines[0].equals("BANNED")) {
+					throw new UserFailure(BANNED);
+				} else if (lines[0].equals("BADAUTH")) {
+					throw new UserFailure(BADAUTH);
+				} else if (lines[0].equals("BADTIME")) {
+					throw new UserFailure(BADTIME);
+				} else if (lines[0].startsWith("FAILED")) {
+					throw new HardFailure();
+				} else {
+					throw new HardFailure();
+				}
+				if (lines.length < 4) {
+					throw new HardFailure();
+				}
+				s = session = new Session(lines[1], lines[3]);
+				
+				hardFailures = 0;
+				handshakeRetryWaitingTime =
+					INITIAL_HANDSHAKE_RETRY_WAITING_TIME;
+				
+				Log.v(LOG_TAG, "New session started.");
+			}
+		}
 
 		@Override
 		public void run() {
-			QueueEntry e;
-			while ((e = queue.peek()) != null) {
-				updateAllClients(); // Update the number of tracks left.
-				// TODO Make real:
-				try {
-					sleep(2500);
-				} catch (InterruptedException e1) {}
-				Log.v(LOG_TAG, "(Pretend) Scrobbling track: " +
-					e.getTrack().toString());
-				queue.remove();
+			if (lastScrobbleResult == BANNED || lastScrobbleResult == BADAUTH) {
+				// TODO According to the spec. we should also refuse to
+				// handshake after a BADTIME response until the clock has been
+				// changed, but we'll need to monitor for time changes to
+				// implement that.
+				inProgress = false;
+				updateAllClients();
+				return;
 			}
-			lastScrobbleResult = OK;
-			inProgress = false;
+			try {
+				handshake();
+				
+				QueueEntry e;
+				while ((e = queue.peek()) != null) {
+					updateAllClients(); // Update the number of tracks left.
+					// TODO Make real:
+					try {
+						sleep(2500);
+					} catch (InterruptedException e1) {}
+					Log.v(LOG_TAG, "(Pretend) Scrobbling track: " +
+						e.getTrack().toString());
+					queue.remove();
+				}
+				
+				inProgress = false;
+				lastScrobbleResult = OK;
+			} catch (IOException e) {
+				Runnable retry = new Runnable() {
+					@Override
+					public void run() {
+						scrobbleNow();
+					}
+				};
+				boolean failureDuringScrobbling = session.isValid();
+				if (failureDuringScrobbling) {
+					++hardFailures;
+					Log.v(LOG_TAG, hardFailures + " hard failures so far.");
+					if (hardFailures > 2) {
+						session.invalidate();
+					}
+				}
+				inProgress = false;
+				lastScrobbleResult = e instanceof HardFailure ?
+					FAILED_OTHER : FAILED_NET;
+				if (failureDuringScrobbling) {
+					handler.post(retry);
+				} else {
+					final long current = handshakeRetryWaitingTime;
+					handshakeRetryWaitingTime *= 2;
+					final long twoHours = 2 * 60 * 60 * 1000;
+					if (handshakeRetryWaitingTime > twoHours) {
+						handshakeRetryWaitingTime = twoHours;
+					}
+					Log.v(LOG_TAG, "Waiting " + (current / 60 / 1000) +
+						" minute(s) before retrying handshake.");
+					handler.postDelayed(retry, current);
+				}
+			} catch (UserFailure e) {
+				inProgress = false;
+				lastScrobbleResult = e.getReason();
+			}
+			
 			updateAllClients();
-			// TODO If it failed for a transient reason then post a delayed
-			// scrobbleNow() to try again.
+			
 			handler.post(new Runnable() {
 				@Override
 				public void run() {
