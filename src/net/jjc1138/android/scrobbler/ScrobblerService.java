@@ -7,15 +7,17 @@ import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.NoSuchElementException;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpVersion;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.HttpParams;
@@ -75,18 +77,29 @@ class Track {
 					throw new NoSuchElementException();
 				}
 				cur.moveToFirst();
-				// TODO Find out what happens when this stuff is absent from the
-				// metadata DB.
 				artist = cur.getString(cur.getColumnIndex(
 					MediaStore.Audio.AudioColumns.ARTIST));
 				track = cur.getString(cur.getColumnIndex(
 					MediaStore.Audio.AudioColumns.TITLE));
 				length = cur.getLong(cur.getColumnIndex(
 					MediaStore.Audio.AudioColumns.DURATION));
+				if (length == 0) {
+					length = null;
+				}
 				album = cur.getString(cur.getColumnIndex(
 					MediaStore.Audio.AudioColumns.ALBUM));
+				if (album.length() == 0) {
+					album = null;
+				}
 				tracknumber = cur.getInt(cur.getColumnIndex(
 					MediaStore.Audio.AudioColumns.TRACK));
+				// The track number is returned with an encoding of the disc
+				// number too. We don't need the disc number:
+				tracknumber %= 1000;
+				if (tracknumber == 0) {
+					tracknumber = null;
+				}
+				mbtrackid = null;
 			} finally {
 				cur.close();
 			}
@@ -253,7 +266,7 @@ class Session {
 public class ScrobblerService extends Service {
 	// This is the maximum number of tracks that we can submit in one request:
 	static final int MAX_SCROBBLE_TRACKS = 50;
-	static final long INITIAL_HANDSHAKE_RETRY_WAITING_TIME = 60000;
+	static final int INITIAL_HANDSHAKE_RETRY_WAITING_TIME = 60000;
 
 	// This is the number of tracks that we will wait to have queued before we
 	// scrobble. It can be larger or smaller than MAX_SCROBBLE_TRACKS.
@@ -278,15 +291,26 @@ public class ScrobblerService extends Service {
 		new RemoteCallbackList<IScrobblerServiceNotificationHandler>();
 	SharedPreferences prefs;
 
-	private int lastScrobbleResult = NOT_YET_ATTEMPTED;
-	private BlockingQueue<QueueEntry> queue =
-		new LinkedBlockingQueue<QueueEntry>();
+	private volatile int lastScrobbleResult = NOT_YET_ATTEMPTED;
+	private ConcurrentLinkedQueue<QueueEntry> queue =
+		new ConcurrentLinkedQueue<QueueEntry>();
+	// When the scrobble thread is preparing to scrobble it moves the
+	// QueueEntries into this list. It might still exist even when the scrobble
+	// thread is not running, because the scrobbling may have failed.
+	private ArrayList<QueueEntry> batch = new ArrayList<QueueEntry>();
+
+	private int queueSize() {
+		return batch.size() + queue.size();
+	}
 
 	private QueueEntry lastPlaying = null;
 	private boolean lastPlayingWasPaused = true;
 	private long lastPlayingTimePlayed = 0;
 	private long lastResumedTime = -1;
 
+	// Scrobbling must be done chronologically, so it is not allowable for two
+	// threads to be scrobbling at once. To help ensure this, only one function
+	// (scrobbleNow()) may start new scrobbling Threads, and it is synchronized.
 	private ScrobbleThread scrobbleThread = null;
 	private Handler handler;
 	private boolean bound = false;
@@ -308,7 +332,7 @@ public class ScrobblerService extends Service {
 	private Object handshaking = new Object();
 
 	private int hardFailures = 0;
-	private long handshakeRetryWaitingTime =
+	private int handshakeRetryWaitingTime =
 		INITIAL_HANDSHAKE_RETRY_WAITING_TIME;
 
 	@Override
@@ -345,7 +369,7 @@ public class ScrobblerService extends Service {
 		try {
 			// As far as I can tell this doesn't have to be called from our main
 			// event thread.
-			h.stateChanged(queue.size(), isScrobbling(), lastScrobbleResult);
+			h.stateChanged(queueSize(), isScrobbling(), lastScrobbleResult);
 		} catch (RemoteException e) {}
 	}
 
@@ -618,7 +642,7 @@ public class ScrobblerService extends Service {
 	}
 
 	private boolean shouldScrobbleNow() {
-		final int queueSize = queue.size();
+		final int queueSize = queueSize();
 		if (queueSize == 0) {
 			return false;
 		}
@@ -782,6 +806,72 @@ public class ScrobblerService extends Service {
 			}
 		}
 
+		private void submit() throws IOException {
+			StringBuffer sb = new StringBuffer("s=" + s.getId());
+			int batchSize = batch.size();
+			for (int i = 0; i < batchSize; ++i) {
+				QueueEntry e = batch.get(i);
+				Track t = e.getTrack();
+				Long secs = t.getSecs();
+				String album = t.getAlbum();
+				Integer tracknumber = t.getTracknumber();
+				String mbtrackid = t.getMbtrackid();
+				sb.append('&' +
+					"a[" + i + "]=" + enc(t.getArtist()) + '&' +
+					"t[" + i + "]=" + enc(t.getTrack()) + '&' +
+					"i[" + i + "]=" + enc(
+						Long.toString(e.getStartTime() / 1000)) + '&' +
+					"o[" + i + "]=" + enc(
+						Character.toString(t.getSource())) + '&' +
+					"r[" + i + "]=" + '&' +
+					"l[" + i + "]=" + enc(
+						secs == null ? "" : secs.toString()) + '&' +
+					"b[" + i + "]=" + enc(
+						album == null ? "" : album) + '&' +
+					"n[" + i + "]=" + enc(
+						tracknumber == null ?
+							"" : tracknumber.toString()) + '&' +
+					"m[" + i + "]=" + enc(
+						mbtrackid == null ? "" : mbtrackid));
+			}
+			String batchSubmission = sb.toString();
+			
+			try {
+				StringEntity ent =
+					new StringEntity(batchSubmission, "US-ASCII");
+				ent.setContentType("application/x-www-form-urlencoded");
+				HttpPost post = new HttpPost(s.getSubmissionURL());
+				post.setEntity(ent);
+				
+				HttpResponse r = client.execute(post);
+				if (r.getStatusLine().getStatusCode() != 200) {
+					throw new HardFailure();
+				}
+				HttpEntity e = r.getEntity();
+				String resp;
+				try {
+					resp = EntityUtils.toString(e, "US-ASCII");
+				} finally {
+					e.consumeContent();
+				}
+				if (resp.startsWith("OK")) {
+					// Yayzors!
+				} else if (resp.startsWith("BADSESSION")) {
+					s.invalidate();
+					throw new HardFailure();
+				} else if (resp.startsWith("FAILED")) {
+					throw new HardFailure();
+				} else {
+					throw new HardFailure();
+				}
+			} catch (UnsupportedEncodingException e) {
+				assert false;
+			}
+			
+			Log.v(LOG_TAG, "Submitted " + batchSize + " tracks.");
+			batch.clear();
+		}
+
 		@Override
 		public void run() {
 			if (lastScrobbleResult == BANNED || lastScrobbleResult == BADAUTH) {
@@ -793,19 +883,22 @@ public class ScrobblerService extends Service {
 				updateAllClients();
 				return;
 			}
+			boolean handshakeOK = false;
 			try {
 				handshake();
+				handshakeOK = true;
 				
-				QueueEntry e;
-				while ((e = queue.peek()) != null) {
+				while (!queue.isEmpty()) {
 					updateAllClients(); // Update the number of tracks left.
-					// TODO Make real:
-					try {
-						sleep(2500);
-					} catch (InterruptedException e1) {}
-					Log.v(LOG_TAG, "(Pretend) Scrobbling track: " +
-						e.getTrack().toString());
-					queue.remove();
+					
+					QueueEntry entry;
+					while (batch.size() < SCROBBLE_BATCH_SIZE &&
+						((entry = queue.poll()) != null)) {
+						
+						batch.add(entry);
+					}
+					
+					submit();
 				}
 				
 				inProgress = false;
@@ -817,10 +910,9 @@ public class ScrobblerService extends Service {
 						scrobbleNow();
 					}
 				};
-				boolean failureDuringScrobbling = session.isValid();
-				if (failureDuringScrobbling) {
+				if (handshakeOK) {
 					++hardFailures;
-					Log.v(LOG_TAG, hardFailures + " hard failures so far.");
+					Log.v(LOG_TAG, hardFailures + " hard failure(s) so far.");
 					if (hardFailures > 2) {
 						session.invalidate();
 					}
@@ -828,12 +920,12 @@ public class ScrobblerService extends Service {
 				inProgress = false;
 				lastScrobbleResult = e instanceof HardFailure ?
 					FAILED_OTHER : FAILED_NET;
-				if (failureDuringScrobbling) {
+				if (handshakeOK) {
 					handler.post(retry);
 				} else {
 					final long current = handshakeRetryWaitingTime;
 					handshakeRetryWaitingTime *= 2;
-					final long twoHours = 2 * 60 * 60 * 1000;
+					final int twoHours = 2 * 60 * 60 * 1000;
 					if (handshakeRetryWaitingTime > twoHours) {
 						handshakeRetryWaitingTime = twoHours;
 					}

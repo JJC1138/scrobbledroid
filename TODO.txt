@@ -16,4 +16,4 @@ Add notifications for important handshake failures that require user action (BAN
  Would be nice:
 Love/ban/skip.
 Replace magic strings with constants so that they can be refactored easily.
-Make it so that when scrobbling is disabled we still keep track of what's going, but just doesn't enqueue.
+Make it so that when scrobbling is disabled we still keep track of what's going, but just don't enqueue.
