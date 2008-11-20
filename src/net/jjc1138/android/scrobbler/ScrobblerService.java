@@ -74,10 +74,11 @@ class Track {
 				ContentUris.withAppendedId(
 					MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id),
 				columns, null, null, null);
+			if (cur == null) {
+				throw new NoSuchElementException();
+			}
+			
 			try {
-				if (cur == null) {
-					throw new NoSuchElementException();
-				}
 				cur.moveToFirst();
 				artist = cur.getString(cur.getColumnIndex(
 					MediaStore.Audio.AudioColumns.ARTIST));
@@ -588,9 +589,6 @@ public class ScrobblerService extends Service {
 				}
 			}
 		}
-		
-		// TODO Make sure we're sensibly handling (maliciously) malformed
-		// Intents.
 	}
 
 	@Override
