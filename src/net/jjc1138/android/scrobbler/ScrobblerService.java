@@ -45,7 +45,7 @@ class IncompleteMetadataException extends InvalidMetadataException {
 }
 
 class Track {
-	private final String sources = "PRELU";
+	private static final String sources = "PRELU";
 
 	public Track(Intent i, Context c) throws InvalidMetadataException {
 		String source = i.getStringExtra("source");
