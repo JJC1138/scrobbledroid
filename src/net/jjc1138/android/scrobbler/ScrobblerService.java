@@ -350,7 +350,7 @@ public class ScrobblerService extends Service {
 		} catch (NameNotFoundException e) {
 			assert false;
 		}
-
+		
 		// TODO Load saved queue if there is one and then delete the file.
 		// TODO Load saved lastPlaying if there is one and then delete the file.
 	}
