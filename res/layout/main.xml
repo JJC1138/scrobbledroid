@@ -8,6 +8,12 @@
 	android:layout_width="fill_parent"
 	android:layout_height="fill_parent"
 	>
+<TextView
+	android:layout_width="fill_parent"
+	android:layout_height="wrap_content"
+	android:text="@string/configuration_title"
+	style="?android:listSeparatorTextViewStyle"
+	/>
 <CheckBox android:id="@+id/enable"
 	android:layout_width="wrap_content"
 	android:layout_height="wrap_content"
@@ -65,10 +71,16 @@
 	android:text="@string/reset_settings"
 	/>
 </LinearLayout>
+<TextView
+	android:layout_width="fill_parent"
+	android:layout_height="wrap_content"
+	android:text="@string/status"
+	style="?android:listSeparatorTextViewStyle"
+	android:layout_marginTop="15sp"
+	/>
 <TextView android:id="@+id/queue_status"
 	android:layout_width="wrap_content"
 	android:layout_height="wrap_content"
-	android:layout_marginTop="15sp"
 	/>
 <Button android:id="@+id/scrobble_now"
 	android:layout_width="wrap_content"

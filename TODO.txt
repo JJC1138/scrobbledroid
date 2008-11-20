@@ -3,7 +3,6 @@ Check on system startup whether there is a saved queue. If there is then start a
 
  Pre-beta nice:
 Links to sign-up page and profile page.
-Static helper methods that simplify sending broadcasts for other players.
 Add information to the UI about when scrobbling will take place.
 Add time of last scrobble to UI.
 Highlight the important user messages (BANNED, BADAUTH, BADTIME) with color.
