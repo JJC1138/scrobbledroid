@@ -297,10 +297,10 @@ public class ScrobblerService extends Service {
 	// When the scrobble thread is preparing to scrobble it moves the
 	// QueueEntries into this list. It might still exist even when the scrobble
 	// thread is not running, because the scrobbling may have failed.
-	private ArrayList<QueueEntry> batch = new ArrayList<QueueEntry>();
+	private ArrayList<QueueEntry> submission = new ArrayList<QueueEntry>();
 
 	private int queueSize() {
-		return batch.size() + queue.size();
+		return submission.size() + queue.size();
 	}
 
 	private QueueEntry lastPlaying = null;
@@ -441,13 +441,12 @@ public class ScrobblerService extends Service {
 	private boolean playedWholeTrack() {
 		// Put some wiggle room in to compensate for the imprecision of our
 		// timekeeping.
-		long v =
-			lastPlayingTimePlayed - lastPlaying.getTrack().getMillis();
-		long a = Math.abs(v);
-		if (a < 30000) {
-			Log.d(LOG_TAG, "Whole track timing error: " + v);
+		long diff = lastPlaying.getTrack().getMillis() -
+			lastPlayingTimePlayed;
+		if (diff < 30000) {
+			Log.d(LOG_TAG, "Whole track timing error: " + diff);
 		}
-		return a < 3000;
+		return diff < 3000;
 	}
 
 	private boolean playTimeEnoughForScrobble() {
@@ -727,7 +726,7 @@ public class ScrobblerService extends Service {
 
 		private void handshake() throws IOException, HardFailure, UserFailure {
 			if (s.isValid()) {
-				Log.v(LOG_TAG, "Session appears to valid already.");
+				Log.v(LOG_TAG, "Session appears to be valid already.");
 				return;
 			}
 			synchronized (handshaking) {
@@ -808,9 +807,9 @@ public class ScrobblerService extends Service {
 
 		private void submit() throws IOException {
 			StringBuffer sb = new StringBuffer("s=" + s.getId());
-			int batchSize = batch.size();
-			for (int i = 0; i < batchSize; ++i) {
-				QueueEntry e = batch.get(i);
+			int submissionSize = submission.size();
+			for (int i = 0; i < submissionSize; ++i) {
+				QueueEntry e = submission.get(i);
 				Track t = e.getTrack();
 				Long secs = t.getSecs();
 				String album = t.getAlbum();
@@ -868,8 +867,8 @@ public class ScrobblerService extends Service {
 				assert false;
 			}
 			
-			Log.v(LOG_TAG, "Submitted " + batchSize + " tracks.");
-			batch.clear();
+			Log.v(LOG_TAG, "Submitted " + submissionSize + " track(s).");
+			submission.clear();
 		}
 
 		@Override
@@ -892,10 +891,10 @@ public class ScrobblerService extends Service {
 					updateAllClients(); // Update the number of tracks left.
 					
 					QueueEntry entry;
-					while (batch.size() < SCROBBLE_BATCH_SIZE &&
+					while (submission.size() < MAX_SCROBBLE_TRACKS &&
 						((entry = queue.poll()) != null)) {
 						
-						batch.add(entry);
+						submission.add(entry);
 					}
 					
 					submit();
