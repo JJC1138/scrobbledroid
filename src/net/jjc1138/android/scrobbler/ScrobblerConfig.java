@@ -160,9 +160,6 @@ public class ScrobblerConfig extends Activity {
 				public void onClick(View v) {
 					uiToPrefs(prefs);
 					settingsChanged.setVisibility(View.GONE);
-					try {
-						service.prefsUpdated();
-					} catch (RemoteException e) {}
 				}
 			});
 		((Button) findViewById(R.id.revert)).setOnClickListener(

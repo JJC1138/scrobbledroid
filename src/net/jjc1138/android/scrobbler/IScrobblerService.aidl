@@ -6,6 +6,5 @@ interface IScrobblerService {
 	void registerNotificationHandler(IScrobblerServiceNotificationHandler h);
 	void unregisterNotificationHandler(IScrobblerServiceNotificationHandler h);
 
-	void prefsUpdated();
 	void startScrobble();
 }

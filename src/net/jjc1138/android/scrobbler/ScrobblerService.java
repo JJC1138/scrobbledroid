@@ -29,6 +29,7 @@ import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.database.Cursor;
 import android.os.Handler;
@@ -289,6 +290,7 @@ public class ScrobblerService extends Service {
 		notificationHandlers =
 		new RemoteCallbackList<IScrobblerServiceNotificationHandler>();
 	private SharedPreferences prefs;
+	private OnSharedPreferenceChangeListener prefsChanged;
 	private String appVersionName;
 
 	private volatile int lastScrobbleResult = NOT_YET_ATTEMPTED;
@@ -339,6 +341,21 @@ public class ScrobblerService extends Service {
 	public void onCreate() {
 		super.onCreate();
 		prefs = getSharedPreferences(PREFS, 0);
+		prefsChanged = new OnSharedPreferenceChangeListener() {
+			@Override
+			public void onSharedPreferenceChanged(
+				SharedPreferences sharedPreferences, String key) {
+				
+				// Force a rehandshake on the next scrobble:
+				session.invalidate();
+				
+				if (lastScrobbleResult == BADAUTH) {
+					lastScrobbleResult = NOT_YET_ATTEMPTED;
+					updateAllClients();
+				}
+			}
+		};
+		prefs.registerOnSharedPreferenceChangeListener(prefsChanged);
 		handler = new Handler();
 		
 		session = new Session("", "");
@@ -358,7 +375,7 @@ public class ScrobblerService extends Service {
 	@Override
 	public void onDestroy() {
 		super.onDestroy();
-		// TODO Save queue if there is one.
+		prefs.unregisterOnSharedPreferenceChangeListener(prefsChanged);
 	}
 
 	private boolean isScrobbling() {
@@ -402,20 +419,6 @@ public class ScrobblerService extends Service {
 					stopIfIdle();
 				}
 			});
-		}
-
-		@Override
-		public void prefsUpdated() throws RemoteException {
-			// Force a rehandshake on the next scrobble:
-			session.invalidate();
-			
-			if (lastScrobbleResult == BADAUTH) {
-				lastScrobbleResult = NOT_YET_ATTEMPTED;
-				updateAllClients();
-			}
-			
-			// TODO Remove this method from the interface and instead use
-			// SharedPreferences.registerOnSharedPreferenceChangeListener().
 		}
 
 		@Override
