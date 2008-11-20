@@ -48,12 +48,12 @@ class Track {
 	private static final String sources = "PRELU";
 
 	public Track(Intent i, Context c) throws InvalidMetadataException {
-		String source = i.getStringExtra("source");
-		if (source == null || source.length() < 1) {
-			this.source = 'P';
+		String iSource = i.getStringExtra("source");
+		if (iSource == null || iSource.length() < 1) {
+			source = 'P';
 		} else {
-			this.source = source.charAt(0);
-			if (sources.indexOf(this.source) == -1) {
+			source = iSource.charAt(0);
+			if (sources.indexOf(source) == -1) {
 				throw new InvalidMetadataException();
 			}
 		}
@@ -104,8 +104,6 @@ class Track {
 				cur.close();
 			}
 		} else {
-			// TODO Test this:
-			
 			// These are required:
 			artist = i.getStringExtra("artist");
 			if (artist == null || artist.length() == 0) {
@@ -119,7 +117,7 @@ class Track {
 			// This is required if source is P:
 			length = new Long(i.getIntExtra("secs", -1));
 			if (length == -1) {
-				if (this.source == 'P') {
+				if (source == 'P') {
 					throw new IncompleteMetadataException();
 				} else {
 					length = null;
@@ -130,7 +128,7 @@ class Track {
 			
 			// These are optional:
 			album = i.getStringExtra("album");
-			if (album.length() == 0) {
+			if (album != null && album.length() == 0) {
 				album = null;
 			}
 			tracknumber = i.getIntExtra("tracknumber", -1);
@@ -138,7 +136,7 @@ class Track {
 				tracknumber = null;
 			}
 			mbtrackid = i.getStringExtra("mb-trackid");
-			if (mbtrackid.length() == 0) {
+			if (mbtrackid != null && mbtrackid.length() == 0) {
 				mbtrackid = null;
 			}
 		}

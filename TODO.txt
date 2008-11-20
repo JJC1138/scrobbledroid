@@ -9,6 +9,7 @@ Add time of last scrobble to UI.
 Highlight the important user messages (BANNED, BADAUTH, BADTIME) with color.
 
  Pre-release:
+Update checking.
 Add copyright/license notices where necessary.
 Make an icon.
 Add notifications for important handshake failures that require user action (BANNED, BADAUTH, BADTIME).
