@@ -29,6 +29,7 @@ import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager.NameNotFoundException;
 import android.database.Cursor;
 import android.os.Handler;
 import android.os.IBinder;
@@ -273,7 +274,7 @@ public class ScrobblerService extends Service {
 	// scrobbling.
 	static final int SCROBBLE_WAITING_TIME_MINUTES = 3;
 
-	static final String LOG_TAG = "ScrobbleDroid";
+	static final String LOG_TAG = "Scrobble Droid";
 	static final String PREFS = "prefs";
 
 	static final int OK = 0;
@@ -284,10 +285,11 @@ public class ScrobblerService extends Service {
 	static final int FAILED_NET = 5;
 	static final int FAILED_OTHER = 6;
 
-	final RemoteCallbackList<IScrobblerServiceNotificationHandler>
+	private final RemoteCallbackList<IScrobblerServiceNotificationHandler>
 		notificationHandlers =
 		new RemoteCallbackList<IScrobblerServiceNotificationHandler>();
-	SharedPreferences prefs;
+	private SharedPreferences prefs;
+	private String appVersionName;
 
 	private volatile int lastScrobbleResult = NOT_YET_ATTEMPTED;
 	private ConcurrentLinkedQueue<QueueEntry> queue =
@@ -341,6 +343,14 @@ public class ScrobblerService extends Service {
 		
 		session = new Session("", "");
 		session.invalidate();
+		
+		try {
+			appVersionName = getPackageManager().getPackageInfo(
+				getPackageName(), 0).versionName;
+		} catch (NameNotFoundException e) {
+			assert false;
+		}
+
 		// TODO Load saved queue if there is one and then delete the file.
 		// TODO Load saved lastPlaying if there is one and then delete the file.
 	}
@@ -750,7 +760,7 @@ public class ScrobblerService extends Service {
 						"c=" + enc(clientID) + '&' +
 						// The "tst" clientID has to use version "1.0":
 						"v=" + enc(clientID.equals("tst") ? "1.0" :
-							getString(R.string.app_version)) + '&' +
+							appVersionName) + '&' +
 						"u=" + enc(prefs.getString("username", null)) + '&' +
 						"t=" + enc(timestamp) + '&' +
 						"a=" + enc(token));
