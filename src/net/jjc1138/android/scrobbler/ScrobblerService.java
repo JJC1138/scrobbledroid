@@ -749,7 +749,7 @@ public class ScrobblerService extends Service {
 						System.currentTimeMillis() / 1000);
 					MessageDigest md5 = MessageDigest.getInstance("MD5");
 					byte[] passwordMD5 = md5.digest(
-						prefs.getString("password", null).getBytes(encoding));
+						prefs.getString("password", "").getBytes(encoding));
 					md5.reset();
 					String token = toHexString(md5.digest(
 						(toHexString(passwordMD5) + timestamp).getBytes(
@@ -762,7 +762,7 @@ public class ScrobblerService extends Service {
 						// The "tst" clientID has to use version "1.0":
 						"v=" + enc(clientID.equals("tst") ? "1.0" :
 							appVersionName) + '&' +
-						"u=" + enc(prefs.getString("username", null)) + '&' +
+						"u=" + enc(prefs.getString("username", "")) + '&' +
 						"t=" + enc(timestamp) + '&' +
 						"a=" + enc(token));
 				} catch (NoSuchAlgorithmException e) {
@@ -882,6 +882,12 @@ public class ScrobblerService extends Service {
 
 		@Override
 		public void run() {
+			if (prefs.getString("username", "").length() == 0) {
+				inProgress = false;
+				updateAllClients();
+				return;
+			}
+			
 			if (lastScrobbleResult == BANNED || lastScrobbleResult == BADAUTH) {
 				// TODOLATER According to the spec. we should also refuse to
 				// handshake after a BADTIME response until the clock has been

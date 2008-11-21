@@ -1,7 +1,5 @@
  Pre-beta essential:
 Check on system startup whether there is a saved queue. If there is then start a scrobble immediately.
-Don't attempt to handshake when the username is blank. Return quietly and leave the status as NOT_YET_ATTEMPTED.
-Check what happens if there are no prefs at all when the service is started.
 
  Pre-beta nice:
 Add information to the UI about when scrobbling will take place.
