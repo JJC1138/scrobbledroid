@@ -71,6 +71,19 @@
 	android:text="@string/reset_settings"
 	/>
 </LinearLayout>
+<TextView android:id="@+id/sign_up"
+	android:layout_width="wrap_content"
+	android:layout_height="wrap_content"
+	android:text="@string/sign_up"
+	style="@style/webLink"
+	/>
+<TextView android:id="@+id/view_user_page"
+	android:layout_width="wrap_content"
+	android:layout_height="wrap_content"
+	android:text="@string/view_user_page"
+	style="@style/webLink"
+	android:visibility="gone"
+	/>
 <TextView
 	android:layout_width="fill_parent"
 	android:layout_height="wrap_content"

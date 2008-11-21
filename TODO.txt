@@ -1,10 +1,10 @@
  Pre-beta essential:
 Check on system startup whether there is a saved queue. If there is then start a scrobble immediately.
+Don't attempt to handshake when the username is blank. Return quietly and leave the status as NOT_YET_ATTEMPTED.
+Check what happens if there are no prefs at all when the service is started.
 
  Pre-beta nice:
-Links to sign-up page and profile page.
 Add information to the UI about when scrobbling will take place.
-Add time of last scrobble to UI.
 Highlight the important user messages (BANNED, BADAUTH, BADTIME) with color.
 
  Pre-release:
@@ -14,6 +14,8 @@ Make an icon.
 Add notifications for important handshake failures that require user action (BANNED, BADAUTH, BADTIME).
 
  Would be nice:
+Add time of last scrobble to UI.
 Love/ban/skip.
 Replace magic strings with constants so that they can be refactored easily.
 Make it so that when scrobbling is disabled we still keep track of what's going, but just don't enqueue.
+Check UI with QVGA resolution.

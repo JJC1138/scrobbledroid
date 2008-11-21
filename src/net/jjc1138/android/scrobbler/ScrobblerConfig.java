@@ -1,5 +1,6 @@
 package net.jjc1138.android.scrobbler;
 
+import java.net.URLEncoder;
 import java.text.ChoiceFormat;
 import java.text.MessageFormat;
 
@@ -9,12 +10,15 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.text.Editable;
+import android.text.Spannable;
 import android.text.TextWatcher;
+import android.text.style.UnderlineSpan;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -31,6 +35,9 @@ public class ScrobblerConfig extends Activity {
 	private CheckBox immediate;
 	private EditText username;
 	private EditText password;
+
+	private TextView sign_up;
+	private TextView view_user_page;
 
 	private LinearLayout settingsChanged;
 	private TextView queue_status;
@@ -145,10 +152,18 @@ public class ScrobblerConfig extends Activity {
 		username = (EditText) findViewById(R.id.username);
 		password = (EditText) findViewById(R.id.password);
 		
+		sign_up = (TextView) findViewById(R.id.sign_up);
+		view_user_page = (TextView) findViewById(R.id.view_user_page);
+		
 		settingsChanged = (LinearLayout) findViewById(R.id.settings_changed);
 		queue_status = (TextView) findViewById(R.id.queue_status);
 		scrobble_now = (Button) findViewById(R.id.scrobble_now);
 		scrobble_status = (TextView) findViewById(R.id.scrobble_status);
+		
+		Spannable text = (Spannable) sign_up.getText();
+		text.setSpan(new UnderlineSpan(), 0, text.length(), 0);
+		text = (Spannable) view_user_page.getText();
+		text.setSpan(new UnderlineSpan(), 0, text.length(), 0);
 		
 		enable.setOnCheckedChangeListener(checkWatcher);
 		immediate.setOnCheckedChangeListener(checkWatcher);
@@ -159,7 +174,7 @@ public class ScrobblerConfig extends Activity {
 				@Override
 				public void onClick(View v) {
 					uiToPrefs(prefs);
-					settingsChanged.setVisibility(View.GONE);
+					settingsChanged();
 				}
 			});
 		((Button) findViewById(R.id.revert)).setOnClickListener(
@@ -167,7 +182,7 @@ public class ScrobblerConfig extends Activity {
 				@Override
 				public void onClick(View v) {
 					prefsToUI(prefs);
-					settingsChanged.setVisibility(View.GONE);
+					settingsChanged();
 				}
 			});
 		scrobble_now.setOnClickListener(new View.OnClickListener() {
@@ -178,10 +193,28 @@ public class ScrobblerConfig extends Activity {
 				} catch (RemoteException e) {}
 			}
 		});
+		sign_up.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				startActivity((new Intent(Intent.ACTION_VIEW,
+					Uri.parse("https://m.last.fm/join"))));
+			}
+		});
+		view_user_page.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				startActivity((new Intent(Intent.ACTION_VIEW,
+					Uri.parse("http://m.last.fm/user/" +
+						URLEncoder.encode(username.getText().toString())))));
+			}
+		});
 	}
 
 	protected void settingsChanged() {
 		settingsChanged.setVisibility(isUISaved() ? View.GONE : View.VISIBLE);
+		boolean hasUsername = username.getText().length() != 0;
+		sign_up.setVisibility(hasUsername ? View.GONE : View.VISIBLE);
+		view_user_page.setVisibility(hasUsername ? View.VISIBLE : View.GONE);
 	}
 
 	private void uiToPrefs(SharedPreferences p) {
@@ -231,15 +264,13 @@ public class ScrobblerConfig extends Activity {
 			SharedPreferences.Editor e = unsaved.edit();
 			e.clear();
 			e.commit();
-			settingsChanged.setVisibility(View.VISIBLE);
 		} else if (prefs.contains(examplePref)) {
 			prefsToUI(prefs);
-			// Reset this because it is set by prefsToUI changing things:
-			settingsChanged.setVisibility(View.GONE);
 		} else {
 			// Store defaults:
 			uiToPrefs(prefs);
 		}
+		settingsChanged();
 		
 		serviceConnection = new ServiceConnection() {
 			@Override

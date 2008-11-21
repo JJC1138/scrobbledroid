@@ -9,6 +9,8 @@
 <string name="password">Password</string>
 <string name="save_settings">Apply/save settings</string>
 <string name="reset_settings">Reset to saved settings</string>
+<string name="sign_up">Sign up for an account</string>
+<string name="view_user_page">View your user page</string>
 <string name="status">Status</string>
 <string name="tracks_ready">0#No tracks are waiting to be scrobbled. They are added here after they finish playing.| 1#There is one track waiting to be scrobbled.| 1&lt;There are {0} tracks waiting to be scrobbled.</string>
 <string name="scrobble_now">Start scrobbling now</string>
