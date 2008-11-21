@@ -2,7 +2,6 @@
 Check on system startup whether there is a saved queue. If there is then start a scrobble immediately.
 
  Pre-beta nice:
-Add information to the UI about when scrobbling will take place.
 Highlight the important user messages (BANNED, BADAUTH, BADTIME) with color.
 
  Pre-release:

@@ -41,8 +41,11 @@ public class ScrobblerConfig extends Activity {
 
 	private LinearLayout settingsChanged;
 	private TextView queue_status;
+	private TextView scrobble_when;
 	private Button scrobble_now;
 	private TextView scrobble_status;
+
+	private String scrobbleWaiting;
 
 	private final Handler handler = new Handler();
 
@@ -157,6 +160,7 @@ public class ScrobblerConfig extends Activity {
 		
 		settingsChanged = (LinearLayout) findViewById(R.id.settings_changed);
 		queue_status = (TextView) findViewById(R.id.queue_status);
+		scrobble_when = (TextView) findViewById(R.id.scrobble_when);
 		scrobble_now = (Button) findViewById(R.id.scrobble_now);
 		scrobble_status = (TextView) findViewById(R.id.scrobble_status);
 		
@@ -164,6 +168,17 @@ public class ScrobblerConfig extends Activity {
 		text.setSpan(new UnderlineSpan(), 0, text.length(), 0);
 		text = (Spannable) view_user_page.getText();
 		text.setSpan(new UnderlineSpan(), 0, text.length(), 0);
+		
+		scrobbleWaiting =
+			MessageFormat.format(getString(R.string.scrobble_when),
+				MessageFormat.format(
+					new ChoiceFormat(getString(R.string.scrobble_when_minutes))
+						.format(ScrobblerService.SCROBBLE_WAITING_TIME_MINUTES),
+					ScrobblerService.SCROBBLE_WAITING_TIME_MINUTES),
+				MessageFormat.format(
+					new ChoiceFormat(getString(R.string.scrobble_when_tracks))
+						.format(ScrobblerService.SCROBBLE_BATCH_SIZE),
+					ScrobblerService.SCROBBLE_BATCH_SIZE));
 		
 		enable.setOnCheckedChangeListener(checkWatcher);
 		immediate.setOnCheckedChangeListener(checkWatcher);
@@ -215,6 +230,8 @@ public class ScrobblerConfig extends Activity {
 		boolean hasUsername = username.getText().length() != 0;
 		sign_up.setVisibility(hasUsername ? View.GONE : View.VISIBLE);
 		view_user_page.setVisibility(hasUsername ? View.VISIBLE : View.GONE);
+		scrobble_when.setText(immediate.isChecked() ?
+			getString(R.string.scrobble_immediate) : scrobbleWaiting);
 	}
 
 	private void uiToPrefs(SharedPreferences p) {

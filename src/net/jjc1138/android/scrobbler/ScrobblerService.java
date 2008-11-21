@@ -354,6 +354,10 @@ public class ScrobblerService extends Service {
 					lastScrobbleResult = NOT_YET_ATTEMPTED;
 					updateAllClients();
 				}
+				
+				if (shouldScrobbleNow()) {
+					scrobbleNow();
+				}
 			}
 		};
 		prefs.registerOnSharedPreferenceChangeListener(prefsChanged);
@@ -633,7 +637,7 @@ public class ScrobblerService extends Service {
 			Log.v(LOG_TAG, "Enqueued previously paused/stopped track.");
 			updatedQueue();
 		}
-		if (!queue.isEmpty()) {
+		if (queueSize() > 0) {
 			scrobbleNow();
 			return; // When the scrobble ends this method will be called again.
 		}
