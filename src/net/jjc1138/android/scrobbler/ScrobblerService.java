@@ -355,9 +355,9 @@ public class ScrobblerService extends Service {
 					updateAllClients();
 				}
 				
-				if (shouldScrobbleNow()) {
-					scrobbleNow();
-				}
+				// This will do a scrobble if it's appropriate to do one now, or
+				// schedule one if necessary:
+				stopIfIdle();
 			}
 		};
 		prefs.registerOnSharedPreferenceChangeListener(prefsChanged);
