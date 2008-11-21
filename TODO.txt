@@ -11,6 +11,7 @@ Make an icon.
 Add notifications for important handshake failures that require user action (BANNED, BADAUTH, BADTIME).
 
  Would be nice:
+Replace the margins around the web links with padding in order to give them more area and make them easier to tap.
 Add time of last scrobble to UI.
 Love/ban/skip.
 Replace magic strings with constants so that they can be refactored easily.
