@@ -1,6 +1,13 @@
 package net.jjc1138.android.scrobbler;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
+import java.io.StreamCorruptedException;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -8,6 +15,8 @@ import java.net.URLEncoder;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -46,7 +55,7 @@ class IncompleteMetadataException extends InvalidMetadataException {
 	private static final long serialVersionUID = 1L;
 }
 
-class Track {
+class Track implements Serializable {
 	private static final String sources = "PRELU";
 
 	public Track(Intent i, Context c) throws InvalidMetadataException {
@@ -216,9 +225,11 @@ class Track {
 	private String album;
 	private Integer tracknumber;
 	private String mbtrackid;
+
+	private static final long serialVersionUID = 1L;
 }
 
-class QueueEntry {
+class QueueEntry implements Serializable {
 	public QueueEntry(Track track, long startTime) {
 		this.track = track;
 		this.startTime = startTime;
@@ -234,6 +245,8 @@ class QueueEntry {
 
 	private Track track;
 	private long startTime;
+
+	private static final long serialVersionUID = 1L;
 }
 
 class Session {
@@ -278,6 +291,7 @@ public class ScrobblerService extends Service {
 
 	static final String LOG_TAG = "Scrobble Droid";
 	static final String PREFS = "prefs";
+	static final String LAST_PLAYING_FILENAME = "lastplaying";
 
 	static final int OK = 0;
 	static final int NOT_YET_ATTEMPTED = 1;
@@ -305,6 +319,8 @@ public class ScrobblerService extends Service {
 	private int queueSize() {
 		return submission.size() + queue.size();
 	}
+
+	private File queueDir;
 
 	private QueueEntry lastPlaying = null;
 	private boolean lastPlayingWasPaused = true;
@@ -373,8 +389,69 @@ public class ScrobblerService extends Service {
 			assert false;
 		}
 		
-		// TODO Load saved queue if there is one and then delete the file.
-		// TODO Load saved lastPlaying if there is one and then delete the file.
+		queueDir = getDir("queue", 0);
+		File[] queueFiles = queueDir.listFiles();
+		if (queueFiles == null) {
+			// It's not documented, but presumably getDir can fail if filesystem
+			// space is extremely low.
+			queueFiles = new File[] {};
+		}
+		Arrays.sort(queueFiles, new Comparator<File>() {
+			@Override
+			public int compare(File f1, File f2) {
+				long l;
+				try {
+					l = Long.parseLong(f1.getName()) -
+						Long.parseLong(f2.getName());
+				} catch (NumberFormatException e) {
+					// Not our file. Oh dear.
+					return 0;
+				}
+				if (l < 0) {
+					return -1;
+				} else if (l > 0) {
+					return 1;
+				} else {
+					return 0;
+				}
+			}
+		});
+		for (File f : queueFiles) {
+			FileInputStream fis;
+			try {
+				fis = new FileInputStream(f);
+				ObjectInputStream ois = new ObjectInputStream(fis);
+				
+				queue.add(new QueueEntry((Track) ois.readObject(),
+					Long.parseLong(f.getName())));
+				
+				ois.close();
+				fis.close();
+			} catch (StreamCorruptedException e) {
+			} catch (IOException e) {
+			} catch (NumberFormatException e) {
+			} catch (ClassNotFoundException e) {}
+		}
+		
+		try {
+			FileInputStream fis = openFileInput(LAST_PLAYING_FILENAME);
+			ObjectInputStream ois = new ObjectInputStream(fis);
+			
+			lastPlaying = (QueueEntry) ois.readObject();
+			lastPlayingTimePlayed = ois.readLong();
+			
+			ois.close();
+			fis.close();
+		} catch (StreamCorruptedException e) {
+		} catch (IOException e) {
+		} catch (ClassNotFoundException e) {}
+		deleteFile(LAST_PLAYING_FILENAME);
+		
+		if (queueSize() > 0) {
+			// Presumably it's been more than SCROBBLE_WAITING_TIME since the
+			// device was switched off.
+			scrobbleNow();
+		}
 	}
 
 	@Override
@@ -442,6 +519,8 @@ public class ScrobblerService extends Service {
 	@Override
 	public boolean onUnbind(Intent intent) {
 		bound = false;
+		// Being bound is one of the conditions for staying alive so:
+		stopIfIdle();
 		return false;
 	}
 
@@ -482,6 +561,30 @@ public class ScrobblerService extends Service {
 		return playTime >= (length / 2);
 	}
 
+	private void enqueue(QueueEntry entry) {
+		// There is no hook in Android for running some code at device shutdown
+		// so we have to save the queue entries as they are enqueued. They are
+		// saved in individual files so that we don't have to rewrite a larger
+		// file continually. We delete these files when the corresponding entry
+		// is scrobbled.
+		try {
+			FileOutputStream fos = new FileOutputStream(new File(queueDir,
+				Long.toString(entry.getStartTime())));
+			ObjectOutputStream oos = new ObjectOutputStream(fos);
+			
+			oos.writeObject(entry.getTrack());
+			
+			oos.close();
+			fos.close();
+		} catch (IOException e) {
+			// No space left? Meh.
+		}
+		// Create the file first, because otherwise there would be a race where
+		// the scrobbling thread could remove the item from the queue, but not
+		// be able to find the file yet.
+		queue.add(entry);
+	}
+
 	private void handleIntent(Intent intent) {
 		Log.v(LOG_TAG, "Status: " +
 			((intent.getBooleanExtra("playing", false) ? "playing" : "stopped")
@@ -516,7 +619,7 @@ public class ScrobblerService extends Service {
 						Log.v(LOG_TAG, "Previously paused track resumed.");
 					} else {
 						if (playedWholeTrack() && playTimeEnoughForScrobble()) {
-							queue.add(lastPlaying);
+							enqueue(lastPlaying);
 							newTrackStarted(t, now);
 							Log.v(LOG_TAG, "Enqueued repeating track.");
 							updatedQueue();
@@ -533,7 +636,7 @@ public class ScrobblerService extends Service {
 					final String logState = lastPlayingWasPaused ?
 						"paused" : "playing";
 					if (playTimeEnoughForScrobble()) {
-						queue.add(lastPlaying);
+						enqueue(lastPlaying);
 						Log.v(LOG_TAG,
 							"Enqueued previously " + logState + " track.");
 						updatedQueue();
@@ -556,7 +659,7 @@ public class ScrobblerService extends Service {
 				Log.v(LOG_TAG, "Track paused/stopped. Total play time so far " +
 					"is " + lastPlayingTimePlayed + ".");
 				if (playedWholeTrack() && playTimeEnoughForScrobble()) {
-					queue.add(lastPlaying);
+					enqueue(lastPlaying);
 					lastPlaying = null;
 					lastPlayingTimePlayed = 0;
 					Log.v(LOG_TAG, "Enqueued paused/stopped track.");
@@ -631,7 +734,7 @@ public class ScrobblerService extends Service {
 		
 		// Check if the paused/stopped track should be scrobbled.
 		if (lastPlaying != null && playTimeEnoughForScrobble()) {
-			queue.add(lastPlaying);
+			enqueue(lastPlaying);
 			lastPlaying = null;
 			lastPlayingTimePlayed = 0;
 			Log.v(LOG_TAG, "Enqueued previously paused/stopped track.");
@@ -649,8 +752,21 @@ public class ScrobblerService extends Service {
 		// Not playing, queue empty, not scrobbling, and no clients connected:
 		// it looks like we really are idle!
 		
-		// TODO Save the lastPlaying information (including
-		// lastPlayingTimePlayed) and then stopSelf().
+		if (lastPlaying != null) {
+			try {
+				FileOutputStream fos = openFileOutput(LAST_PLAYING_FILENAME, 0);
+				ObjectOutputStream oos = new ObjectOutputStream(fos);
+				
+				oos.writeObject(lastPlaying);
+				oos.writeLong(lastPlayingTimePlayed);
+				
+				oos.close();
+				fos.close();
+			} catch (IOException e) {}
+		}
+		
+		Log.v(LOG_TAG, "Shutting down idle service.");
+		stopSelf();
 	}
 
 	private boolean shouldScrobbleNow() {
@@ -878,6 +994,17 @@ public class ScrobblerService extends Service {
 				}
 			} catch (UnsupportedEncodingException e) {
 				assert false;
+			}
+			
+			// There is a race here, because the device could be switched off
+			// right now, after the tracks have already been submitted, but
+			// before we delete the queue entries from the filesystem. That
+			// would cause them to be resubmitted when we load the queue next
+			// time we start up. That's fine, because the duplicates will be
+			// silently ignored by the server when submitted again.
+			for (QueueEntry entry : submission) {
+				new File(
+					queueDir, Long.toString(entry.getStartTime())).delete();
 			}
 			
 			Log.v(LOG_TAG, "Submitted " + submissionSize + " track(s).");

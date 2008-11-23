@@ -1,13 +1,9 @@
- Pre-beta essential:
-Check on system startup whether there is a saved queue. If there is then start a scrobble immediately.
-
- Pre-beta nice:
-Highlight the important user messages (BANNED, BADAUTH, BADTIME) with color.
-
  Pre-release:
+Start on device startup.
 Update checking.
 Add copyright/license notices where necessary.
 Make an icon.
+Highlight the important user messages (BANNED, BADAUTH, BADTIME) with color.
 Add notifications for important handshake failures that require user action (BANNED, BADAUTH, BADTIME).
 
  Would be nice:
