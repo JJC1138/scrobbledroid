@@ -7,6 +7,7 @@
 		android:protectionLevel="signature" />
 	<uses-permission android:name="net.jjc1138.android.scrobbler.privateservices" />
 	<uses-permission android:name="android.permission.INTERNET" />
+	<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 	<application android:icon="@drawable/icon" android:label="@string/app_name">
 		<activity android:name=".ScrobblerConfig" android:label="@string/app_name"
 			android:theme="@android:style/Theme.NoTitleBar">
@@ -23,6 +24,11 @@
 		<service android:name=".ScrobblerService"
 			android:permission="net.jjc1138.android.scrobbler.privateservices" />
 
+		<receiver android:name=".BootReceiver">
+			<intent-filter>
+				<action android:name="android.intent.action.BOOT_COMPLETED" />
+			</intent-filter>
+		</receiver>
 		<receiver android:name=".MusicBroadcastReceiver">
 			<intent-filter>
 				<action android:name="com.android.music.metachanged" />

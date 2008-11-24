@@ -1,10 +1,10 @@
  Pre-release:
-Start on device startup.
 Update checking.
 Add copyright/license notices where necessary.
 Make an icon.
 Highlight the important user messages (BANNED, BADAUTH, BADTIME) with color.
 Add notifications for important handshake failures that require user action (BANNED, BADAUTH, BADTIME).
+Think about renaming/re-specifying the public intent.
 
  Would be nice:
 Replace the margins around the web links with padding in order to give them more area and make them easier to tap.
