@@ -56,7 +56,7 @@ class IncompleteMetadataException extends InvalidMetadataException {
 }
 
 class Track implements Serializable {
-	private static final String sources = "PRELU";
+	private static final String sources = "PREU";
 
 	public Track(Intent i, Context c) throws InvalidMetadataException {
 		String iSource = i.getStringExtra("source");

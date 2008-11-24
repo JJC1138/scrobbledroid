@@ -3,7 +3,6 @@ Update checking.
 Make an icon.
 Highlight the important user messages (BANNED, BADAUTH, BADTIME) with color.
 Add notifications for important handshake failures that require user action (BANNED, BADAUTH, BADTIME).
-Think about renaming/re-specifying the public intent.
 
  Would be nice:
 Replace the margins around the web links with padding in order to give them more area and make them easier to tap.
@@ -12,3 +11,4 @@ Love/ban/skip.
 Replace magic strings with constants so that they can be refactored easily.
 Make it so that when scrobbling is disabled we still keep track of what's going, but just don't enqueue.
 Check UI with QVGA resolution.
+Support for the getting metadata automatically from the device's Video MediaStore.

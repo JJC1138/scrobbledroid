@@ -30,7 +30,8 @@ public class MusicStatusFetcher extends Service {
 				IMediaPlaybackService s =
 					IMediaPlaybackService.Stub.asInterface(binder);
 				
-				Intent i = new Intent(StatusBroadcastReceiver.ACTION);
+				Intent i = new Intent(
+					StatusBroadcastReceiver.ACTION_MUSIC_STATUS);
 				try {
 					i.putExtra("playing", s.isPlaying());
 					i.putExtra("id", s.getAudioId());
