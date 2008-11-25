@@ -91,11 +91,19 @@ class Track implements Serializable {
 			}
 			
 			try {
+				final String UNKNOWN = "<unknown>";
+				
 				cur.moveToFirst();
 				artist = cur.getString(cur.getColumnIndex(
 					MediaStore.Audio.AudioColumns.ARTIST));
+				if (artist.length() == 0 || artist.equals(UNKNOWN)) {
+					throw new IncompleteMetadataException();
+				}
 				track = cur.getString(cur.getColumnIndex(
 					MediaStore.Audio.AudioColumns.TITLE));
+				if (track.length() == 0 || track.equals(UNKNOWN)) {
+					throw new IncompleteMetadataException();
+				}
 				length = cur.getLong(cur.getColumnIndex(
 					MediaStore.Audio.AudioColumns.DURATION));
 				if (length == 0) {
@@ -103,7 +111,7 @@ class Track implements Serializable {
 				}
 				album = cur.getString(cur.getColumnIndex(
 					MediaStore.Audio.AudioColumns.ALBUM));
-				if (album.length() == 0) {
+				if (album.length() == 0 || album.equals(UNKNOWN)) {
 					album = null;
 				}
 				tracknumber = cur.getInt(cur.getColumnIndex(
@@ -528,12 +536,18 @@ public class ScrobblerService extends Service {
 	}
 
 	private void newTrackStarted(Track t, long now) {
-		this.lastPlaying = new QueueEntry(t, now);
-		lastPlayingWasPaused = false;
+		if (t != null) {
+			this.lastPlaying = new QueueEntry(t, now);
+			lastPlayingWasPaused = false;
+			lastResumedTime = now;
+			Log.v(LOG_TAG, "New track started.");
+		} else {
+			lastPlaying = null;
+			lastPlayingWasPaused = true;
+			Log.v(LOG_TAG, "New track with inadequate metadata started.");
+		}
 		lastPlayingTimePlayed = 0;
-		lastResumedTime = now;
 		lastEventTime = now;
-		Log.v(LOG_TAG, "New track started.");
 	}
 
 	private boolean playedWholeTrack() {
@@ -604,9 +618,9 @@ public class ScrobblerService extends Service {
 		try {
 			t = new Track(intent, this);
 		} catch (InvalidMetadataException e) {
-			return;
+			t = null;
 		} catch (NoSuchElementException e) {
-			return;
+			t = null;
 		}
 		long now = System.currentTimeMillis();
 		
