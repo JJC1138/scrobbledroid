@@ -5,6 +5,7 @@ import java.text.ChoiceFormat;
 import java.text.MessageFormat;
 
 import android.app.Activity;
+import android.app.NotificationManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -349,6 +350,10 @@ public class ScrobblerConfig extends Activity {
 				try {
 					service.registerNotificationHandler(notifier);
 				} catch (RemoteException e) {}
+				// There's no need for notifications now that the user is
+				// looking at the UI:
+				((NotificationManager) getSystemService(NOTIFICATION_SERVICE))
+					.cancelAll();
 			}
 
 			@Override

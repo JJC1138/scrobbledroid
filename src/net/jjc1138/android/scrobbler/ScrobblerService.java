@@ -33,6 +33,9 @@ import org.apache.http.params.HttpParams;
 import org.apache.http.params.HttpProtocolParams;
 import org.apache.http.util.EntityUtils;
 
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.ContentUris;
 import android.content.Context;
@@ -547,7 +550,7 @@ public class ScrobblerService extends Service {
 	private boolean playTimeEnoughForScrobble() {
 		final long playTime = lastPlayingTimePlayed;
 		// For debugging:
-		//return playTime >= 5000;
+		//if (true) { return playTime >= 5000; }
 		if (playTime < 30000) {
 			return false;
 		}
@@ -854,6 +857,7 @@ public class ScrobblerService extends Service {
 		}
 
 		private void handshake() throws IOException, HardFailure, UserFailure {
+			//if (true) { throw new UserFailure(BADAUTH); }
 			if (s.isValid()) {
 				Log.v(LOG_TAG, "Session appears to be valid already.");
 				return;
@@ -1092,6 +1096,27 @@ public class ScrobblerService extends Service {
 			} catch (UserFailure e) {
 				inProgress = false;
 				lastScrobbleResult = e.getReason();
+				if (!bound) {
+					int textID =
+						e.reason == BANNED ? R.string.scrobbling_banned :
+						e.reason == BADAUTH ? R.string.scrobbling_badauth :
+						e.reason == BADTIME ? R.string.scrobbling_badtime : 0;
+					if (textID != 0) {
+						Notification n = new Notification();
+						// TODO Use a properly sized icon:
+						n.icon = R.drawable.icon;
+						Intent i = new Intent(
+							ScrobblerService.this, ScrobblerConfig.class);
+						i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+						n.setLatestEventInfo(ScrobblerService.this,
+							getString(R.string.app_name), getString(textID),
+							PendingIntent.getActivity(ScrobblerService.this, 0,
+								i, 0));
+						n.flags |= Notification.FLAG_AUTO_CANCEL;
+						((NotificationManager) getSystemService(
+							NOTIFICATION_SERVICE)).notify(0, n);
+					}
+				}
 			}
 			
 			updateAllClients();
