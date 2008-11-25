@@ -719,7 +719,18 @@ public class ScrobblerService extends Service {
 	public void onStart(Intent intent, int startId) {
 		super.onStart(intent, startId);
 		
-		handleIntent(intent);
+		String action = intent.getAction();
+		if (action != null &&
+			(action.equals(Intent.ACTION_TIME_CHANGED) ||
+			 action.equals(Intent.ACTION_TIMEZONE_CHANGED))) {
+			
+			if (lastScrobbleResult == BADTIME) {
+				lastScrobbleResult = NOT_YET_ATTEMPTED;
+				updateAllClients();
+			}
+		} else {
+			handleIntent(intent);
+		}
 		stopIfIdle();
 	}
 
@@ -1039,11 +1050,10 @@ public class ScrobblerService extends Service {
 				return;
 			}
 			
-			if (lastScrobbleResult == BANNED || lastScrobbleResult == BADAUTH) {
-				// TODOLATER According to the spec. we should also refuse to
-				// handshake after a BADTIME response until the clock has been
-				// changed, but we'll need to monitor for time changes to
-				// implement that.
+			if (lastScrobbleResult == BANNED ||
+				lastScrobbleResult == BADAUTH ||
+				lastScrobbleResult == BADTIME) {
+				
 				inProgress = false;
 				Log.v(LOG_TAG,
 					"Refusing to scrobble because of an uncorrected error.");

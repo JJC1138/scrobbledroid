@@ -2,7 +2,6 @@
 Make an icon.
 
  Would be nice:
-If we've received a BADTIME response then disable scrobbling and re-enable it after the time has been updated.
 Replace the margins around the web links with padding in order to give them more area and make them easier to tap.
 Add time of last scrobble to UI.
 Love/ban/skip.

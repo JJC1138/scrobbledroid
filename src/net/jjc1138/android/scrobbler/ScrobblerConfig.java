@@ -99,22 +99,15 @@ public class ScrobblerConfig extends Activity {
 							hide(update_link);
 							hide(scrobble_status);
 						} else {
-							// TODOLATER BADTIME should also prevent further
-							// handshakes according to the spec., but we don't
-							// yet have a way of resetting from BADTIME when the
-							// time is updated.
-							if (lastScrobbleResult == ScrobblerService.BANNED ||
-								lastScrobbleResult == ScrobblerService.BADAUTH)
-							{
-								hide(scrobble_now);
-								hide(scrobble_when);
-							}
 							if (lastScrobbleResult ==
 									ScrobblerService.BANNED ||
 								lastScrobbleResult ==
 									ScrobblerService.BADAUTH ||
 								lastScrobbleResult ==
 									ScrobblerService.BADTIME) {
+								
+								hide(scrobble_now);
+								hide(scrobble_when);
 								
 								show(scrobble_user_error);
 								hide(scrobble_status);
