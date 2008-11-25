@@ -726,6 +726,9 @@ public class ScrobblerService extends Service {
 			
 			if (lastScrobbleResult == BADTIME) {
 				lastScrobbleResult = NOT_YET_ATTEMPTED;
+				// lastEventTime is used to determine when we should scrobble
+				// and it may be very wrong if the time was wrong so reset it:
+				lastEventTime = System.currentTimeMillis();
 				updateAllClients();
 			}
 		} else {
