@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 <style name="webLink">
-	<item name="android:focusable">true</item>item>
+	<item name="android:focusable">true</item>
 	<item name="android:textColor">@color/link</item>
 	<!-- This is partly for legibility against the black background, and partly to make it easier to tap with a finger: -->
 	<item name="android:textSize">18sp</item>

@@ -21,6 +21,7 @@
 <string name="scrobbling_in_progress">Scrobbling is in progress...</string>
 <string name="scrobbling_ok">The last scrobble was successful.</string>
 <string name="scrobbling_banned">This version of this application is no longer allowed to scrobble. Please try upgrading to a newer version if one is available.</string>
+<string name="update_link">Check for new version</string>
 <string name="scrobbling_badauth">Scrobbling failed because the username or password is incorrect. Please check them.</string>
 <string name="scrobbling_badtime">Scrobbling failed because the time or the timezone on this device appears to be incorrect. Please check them.</string>
 <string name="scrobbling_failed_net">Scrobbling failed because of a network error.</string>

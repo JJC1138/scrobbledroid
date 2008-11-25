@@ -91,6 +91,20 @@
 	style="?android:listSeparatorTextViewStyle"
 	android:layout_marginTop="15sp"
 	/>
+<TextView android:id="@+id/scrobble_user_error"
+	android:layout_width="wrap_content"
+	android:layout_height="wrap_content"
+	android:textColor="#f00"
+	android:textSize="16sp"
+	android:visibility="gone"
+	/>
+<TextView android:id="@+id/update_link"
+	android:layout_width="wrap_content"
+	android:layout_height="wrap_content"
+	android:text="@string/update_link"
+	style="@style/webLink"
+	android:visibility="gone"
+	/>
 <TextView android:id="@+id/queue_status"
 	android:layout_width="wrap_content"
 	android:layout_height="wrap_content"

@@ -40,6 +40,8 @@ public class ScrobblerConfig extends Activity {
 	private TextView view_user_page;
 
 	private LinearLayout settingsChanged;
+	private TextView scrobble_user_error;
+	private TextView update_link;
 	private TextView queue_status;
 	private TextView scrobble_when;
 	private Button scrobble_now;
@@ -48,6 +50,14 @@ public class ScrobblerConfig extends Activity {
 	private String scrobbleWaiting;
 
 	private final Handler handler = new Handler();
+
+	private static void show(View v) {
+		v.setVisibility(View.VISIBLE);
+	}
+
+	private static void hide(View v) {
+		v.setVisibility(View.GONE);
+	}
 
 	private final IScrobblerServiceNotificationHandler.Stub notifier =
 		new IScrobblerServiceNotificationHandler.Stub() {
@@ -64,41 +74,72 @@ public class ScrobblerConfig extends Activity {
 							new ChoiceFormat(getString(R.string.tracks_ready))
 								.format(queueSize), queueSize));
 						
-						// TODOLATER BADTIME should also prevent further
-						// handshakes according to the spec., but we don't yet
-						// have a way of resetting from BADTIME when the time is
-						// updated.
-						scrobble_now.setVisibility(
-							(!scrobbling && queueSize > 0 &&
-								lastScrobbleResult != ScrobblerService.BANNED &&
-								lastScrobbleResult != ScrobblerService.BADAUTH)
-								? View.VISIBLE : View.GONE);
+						// This is perhaps a tad verbose, but at least it's easy
+						// to read:
 						
-						scrobble_status.setVisibility(
-							(!scrobbling && lastScrobbleResult == 
-								ScrobblerService.NOT_YET_ATTEMPTED) ?
-							
-							View.GONE : View.VISIBLE);
+						if (queueSize > 0) {
+							show(scrobble_now);
+						} else {
+							hide(scrobble_now);
+						}
 						
 						if (scrobbling) {
 							scrobble_status.setText(
 								getString(R.string.scrobbling_in_progress));
+							hide(scrobble_user_error);
+							hide(update_link);
+							hide(scrobble_now);
+							show(scrobble_status);
+						} else if (lastScrobbleResult ==
+							ScrobblerService.NOT_YET_ATTEMPTED) {
+							
+							hide(scrobble_user_error);
+							hide(update_link);
+							hide(scrobble_status);
 						} else {
+							// TODOLATER BADTIME should also prevent further
+							// handshakes according to the spec., but we don't
+							// yet have a way of resetting from BADTIME when the
+							// time is updated.
+							if (lastScrobbleResult == ScrobblerService.BANNED ||
+								lastScrobbleResult == ScrobblerService.BADAUTH)
+							{
+								hide(scrobble_now);
+							}
+							if (lastScrobbleResult ==
+									ScrobblerService.BANNED ||
+								lastScrobbleResult ==
+									ScrobblerService.BADAUTH ||
+								lastScrobbleResult ==
+									ScrobblerService.BADTIME) {
+								
+								show(scrobble_user_error);
+								hide(scrobble_status);
+							} else {
+								hide(scrobble_user_error);
+								show(scrobble_status);
+							}
+							if (lastScrobbleResult == ScrobblerService.BANNED) {
+								show(update_link);
+							} else {
+								hide(update_link);
+							}
+							
 							switch (lastScrobbleResult) {
 							case ScrobblerService.OK:
 								scrobble_status.setText(getString(
 									R.string.scrobbling_ok));
 								break;
 							case ScrobblerService.BANNED:
-								scrobble_status.setText(getString(
+								scrobble_user_error.setText(getString(
 									R.string.scrobbling_banned));
 								break;
 							case ScrobblerService.BADAUTH:
-								scrobble_status.setText(getString(
+								scrobble_user_error.setText(getString(
 									R.string.scrobbling_badauth));
 								break;
 							case ScrobblerService.BADTIME:
-								scrobble_status.setText(getString(
+								scrobble_user_error.setText(getString(
 									R.string.scrobbling_badtime));
 								break;
 							case ScrobblerService.FAILED_NET:
@@ -159,15 +200,19 @@ public class ScrobblerConfig extends Activity {
 		view_user_page = (TextView) findViewById(R.id.view_user_page);
 		
 		settingsChanged = (LinearLayout) findViewById(R.id.settings_changed);
+		scrobble_user_error = (TextView) findViewById(R.id.scrobble_user_error);
+		update_link = (TextView) findViewById(R.id.update_link);
 		queue_status = (TextView) findViewById(R.id.queue_status);
 		scrobble_when = (TextView) findViewById(R.id.scrobble_when);
 		scrobble_now = (Button) findViewById(R.id.scrobble_now);
 		scrobble_status = (TextView) findViewById(R.id.scrobble_status);
 		
-		Spannable text = (Spannable) sign_up.getText();
-		text.setSpan(new UnderlineSpan(), 0, text.length(), 0);
-		text = (Spannable) view_user_page.getText();
-		text.setSpan(new UnderlineSpan(), 0, text.length(), 0);
+		for (TextView tv : new TextView[] {
+			sign_up, view_user_page, update_link
+		}) {
+			Spannable text = (Spannable) tv.getText();
+			text.setSpan(new UnderlineSpan(), 0, text.length(), 0);
+		}
 		
 		scrobbleWaiting =
 			MessageFormat.format(getString(R.string.scrobble_when),
@@ -221,6 +266,14 @@ public class ScrobblerConfig extends Activity {
 				startActivity((new Intent(Intent.ACTION_VIEW,
 					Uri.parse("http://m.last.fm/user/" +
 						URLEncoder.encode(username.getText().toString())))));
+			}
+		});
+		update_link.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				startActivity((new Intent(Intent.ACTION_VIEW,
+					Uri.parse("market://search?q=pname:" +
+						URLEncoder.encode(getPackageName())))));
 			}
 		});
 	}

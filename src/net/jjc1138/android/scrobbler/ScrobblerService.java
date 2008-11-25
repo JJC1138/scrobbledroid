@@ -1013,8 +1013,10 @@ public class ScrobblerService extends Service {
 
 		@Override
 		public void run() {
+			Log.v(LOG_TAG, "Scrobbling process started.");
 			if (prefs.getString("username", "").length() == 0) {
 				inProgress = false;
+				Log.v(LOG_TAG, "Cannot scrobble because there is no username.");
 				updateAllClients();
 				return;
 			}
@@ -1025,6 +1027,8 @@ public class ScrobblerService extends Service {
 				// changed, but we'll need to monitor for time changes to
 				// implement that.
 				inProgress = false;
+				Log.v(LOG_TAG,
+					"Refusing to scrobble because of an uncorrected error.");
 				updateAllClients();
 				return;
 			}
@@ -1048,6 +1052,13 @@ public class ScrobblerService extends Service {
 				
 				inProgress = false;
 				lastScrobbleResult = OK;
+				
+				handler.post(new Runnable() {
+					@Override
+					public void run() {
+						stopIfIdle();
+					}
+				});
 			} catch (IOException e) {
 				Runnable retry = new Runnable() {
 					@Override
@@ -1084,13 +1095,6 @@ public class ScrobblerService extends Service {
 			}
 			
 			updateAllClients();
-			
-			handler.post(new Runnable() {
-				@Override
-				public void run() {
-					stopIfIdle();
-				}
-			});
 		}
 
 		public boolean inProgress() {
