@@ -83,6 +83,7 @@ public class ScrobblerConfig extends Activity {
 						} else {
 							hide(scrobble_now);
 						}
+						show(scrobble_when);
 						
 						if (scrobbling) {
 							scrobble_status.setText(
@@ -106,6 +107,7 @@ public class ScrobblerConfig extends Activity {
 								lastScrobbleResult == ScrobblerService.BADAUTH)
 							{
 								hide(scrobble_now);
+								hide(scrobble_when);
 							}
 							if (lastScrobbleResult ==
 									ScrobblerService.BANNED ||
