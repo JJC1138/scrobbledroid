@@ -322,7 +322,9 @@ public class ScrobblerConfig extends Activity {
 			uiToPrefs(unsaved);
 		}
 		try {
-			service.unregisterNotificationHandler(notifier);
+			if (service != null && notifier != null) {
+				service.unregisterNotificationHandler(notifier);
+			}
 		} catch (RemoteException e) {}
 		unbindService(serviceConnection);
 	}
