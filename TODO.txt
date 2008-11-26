@@ -1,7 +1,5 @@
- Pre-release:
-Make an icon.
-
  Would be nice:
+Support for excluding files from scrobbling by directory.
 Replace the margins around the web links with padding in order to give them more area and make them easier to tap.
 Add time of last scrobble to UI.
 Love/ban/skip.

@@ -1130,8 +1130,7 @@ public class ScrobblerService extends Service {
 						e.reason == BADTIME ? R.string.scrobbling_badtime : 0;
 					if (textID != 0) {
 						Notification n = new Notification();
-						// TODO Use a properly sized icon:
-						n.icon = R.drawable.icon;
+						n.icon = R.drawable.error;
 						Intent i = new Intent(
 							ScrobblerService.this, ScrobblerConfig.class);
 						i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
