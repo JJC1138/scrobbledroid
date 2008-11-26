@@ -1068,7 +1068,7 @@ public class ScrobblerService extends Service {
 				handshake();
 				handshakeOK = true;
 				
-				while (!queue.isEmpty()) {
+				while (queueSize() > 0) {
 					updateAllClients(); // Update the number of tracks left.
 					
 					QueueEntry entry;
