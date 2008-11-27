@@ -46,6 +46,7 @@ import android.content.pm.PackageManager.NameNotFoundException;
 import android.database.Cursor;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.PowerManager;
 import android.os.RemoteCallbackList;
 import android.os.RemoteException;
 import android.provider.MediaStore;
@@ -298,7 +299,7 @@ public class ScrobblerService extends Service {
 	static final int SCROBBLE_BATCH_SIZE = MAX_SCROBBLE_TRACKS;
 	// This is how long we will wait after music has stopped playing before
 	// scrobbling.
-	static final int SCROBBLE_WAITING_TIME_MINUTES = 3;
+	static final int SCROBBLE_WAITING_TIME_MINUTES = 1;
 
 	static final String LOG_TAG = "Scrobble Droid";
 	static final String PREFS = "prefs";
@@ -318,6 +319,7 @@ public class ScrobblerService extends Service {
 	private SharedPreferences prefs;
 	private OnSharedPreferenceChangeListener prefsChanged;
 	private String appVersionName;
+	private PowerManager.WakeLock wakeLock;
 
 	private volatile int lastScrobbleResult = NOT_YET_ATTEMPTED;
 	private ConcurrentLinkedQueue<QueueEntry> queue =
@@ -368,6 +370,16 @@ public class ScrobblerService extends Service {
 	@Override
 	public void onCreate() {
 		super.onCreate();
+		
+		wakeLock = ((PowerManager) getSystemService(POWER_SERVICE))
+			.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, LOG_TAG);
+		// We hold onto this WakeLock whenever this service is running. That may
+		// seem reckless at first glance, but we carefully manage the lifetime
+		// of the service and shut it down when it isn't needed (in
+		// stopIfIdle()), so we don't keep the device awake for longer than is
+		// necessary.
+		wakeLock.acquire();
+		
 		prefs = getSharedPreferences(PREFS, 0);
 		prefsChanged = new OnSharedPreferenceChangeListener() {
 			@Override
@@ -469,6 +481,8 @@ public class ScrobblerService extends Service {
 	public void onDestroy() {
 		super.onDestroy();
 		prefs.unregisterOnSharedPreferenceChangeListener(prefsChanged);
+		Log.v(LOG_TAG, "Service destroyed.");
+		wakeLock.release();
 	}
 
 	private boolean isScrobbling() {
