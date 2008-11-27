@@ -345,6 +345,10 @@ public class ScrobblerService extends Service {
 	private long lastPlayingTimePlayed = 0;
 	private long lastResumedTime = -1;
 
+	// This is a horrible workaround. see the comment in stopIfIdle() for
+	// explanation:
+	private boolean lastPlayingFromMusicStatusFetcher = false;
+
 	// Scrobbling must be done chronologically, so it is not allowable for two
 	// threads to be scrobbling at once. To help ensure this, only one function
 	// (scrobbleNow()) may start new scrobbling Threads, and it is synchronized.
@@ -634,17 +638,18 @@ public class ScrobblerService extends Service {
 			// That one is mandatory.
 			return;
 		}
-		Track t;
-		try {
-			t = new Track(intent, this);
-		} catch (InvalidMetadataException e) {
-			t = null;
-		} catch (NoSuchElementException e) {
-			t = null;
-		}
 		long now = System.currentTimeMillis();
 		
 		if (intent.getBooleanExtra("playing", false)) {
+			lastPlayingFromMusicStatusFetcher = intent.getBooleanExtra(
+				MusicStatusFetcher.FROM_MUSIC_STATUS_FETCHER, false);
+			
+			Track t = null;
+			try {
+				t = new Track(intent, this);
+			} catch (InvalidMetadataException e) {
+			} catch (NoSuchElementException e) {}
+			
 			if (lastPlaying == null) {
 				newTrackStarted(t, now);
 			} else {
@@ -778,6 +783,18 @@ public class ScrobblerService extends Service {
 
 	private void stopIfIdle() {
 		if (!lastPlayingWasPaused) {
+			if (lastPlayingFromMusicStatusFetcher) {
+				// The version of the Music app on the G1 doesn't send
+				// broadcasts when a track stops at the end of a playlist, so
+				// we poll every minute to see if it has in fact finished.
+				handler.postDelayed(new Runnable() {
+					@Override
+					public void run() {
+						startService(new Intent(
+							ScrobblerService.this, MusicStatusFetcher.class));
+					}
+				}, 60000);
+			}
 			return;
 		}
 		if (isScrobbling()) {

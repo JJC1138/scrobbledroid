@@ -14,7 +14,10 @@ import com.android.music.IMediaPlaybackService;
  * broadcasts that in our format (to be received by StatusBroadcastReceiver).
  */
 public class MusicStatusFetcher extends Service {
-	int starts = 0;
+	static final String FROM_MUSIC_STATUS_FETCHER
+		= "from_music_status_fetcher";
+
+	private int starts = 0;
 
 	@Override
 	public void onStart(Intent intent, int startId) {
@@ -39,6 +42,7 @@ public class MusicStatusFetcher extends Service {
 					i.putExtra("playing", false);
 				}
 				MusicStatusFetcher.this.unbindService(this);
+				i.putExtra(FROM_MUSIC_STATUS_FETCHER, true);
 				sendBroadcast(i);
 				
 				--starts;
