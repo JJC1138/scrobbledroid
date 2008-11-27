@@ -33,6 +33,7 @@ import org.apache.http.params.HttpParams;
 import org.apache.http.params.HttpProtocolParams;
 import org.apache.http.util.EntityUtils;
 
+import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -49,6 +50,7 @@ import android.os.IBinder;
 import android.os.PowerManager;
 import android.os.RemoteCallbackList;
 import android.os.RemoteException;
+import android.os.SystemClock;
 import android.provider.MediaStore;
 import android.util.Log;
 
@@ -304,6 +306,9 @@ public class ScrobblerService extends Service {
 	static final String LOG_TAG = "Scrobble Droid";
 	static final String PREFS = "prefs";
 	static final String LAST_PLAYING_FILENAME = "lastplaying";
+	static final String WAITING_TIME_FILENAME = "waitingtime";
+	private static final String ACTION_RETRY_HANDSHAKE =
+		"net.jjc1138.android.scrobbler.action.RETRY_HANDSHAKE";
 
 	static final int OK = 0;
 	static final int NOT_YET_ATTEMPTED = 1;
@@ -366,6 +371,7 @@ public class ScrobblerService extends Service {
 	private int hardFailures = 0;
 	private int handshakeRetryWaitingTime =
 		INITIAL_HANDSHAKE_RETRY_WAITING_TIME;
+	private volatile boolean handshakeRetryAlarmSet = false;
 
 	@Override
 	public void onCreate() {
@@ -745,6 +751,25 @@ public class ScrobblerService extends Service {
 				lastEventTime = System.currentTimeMillis();
 				updateAllClients();
 			}
+		} else if (action != null && action.equals(ACTION_RETRY_HANDSHAKE)) {
+			Log.v(LOG_TAG, "Woken up by alarm to retry handshake.");
+			
+			try {
+				FileInputStream fis = openFileInput(WAITING_TIME_FILENAME);
+				ObjectInputStream ois = new ObjectInputStream(fis);
+				
+				handshakeRetryWaitingTime = ois.readInt();
+				
+				ois.close();
+				fis.close();
+				
+				deleteFile(WAITING_TIME_FILENAME);
+			} catch (IOException e) {}
+			
+			// This is important if the alarm is fired onto a service that is
+			// already running (probably because a client was attached when the
+			// alarm was set):
+			handshakeRetryAlarmSet = false;
 		} else {
 			handleIntent(intent);
 		}
@@ -785,7 +810,7 @@ public class ScrobblerService extends Service {
 			Log.v(LOG_TAG, "Enqueued previously paused/stopped track.");
 			updatedQueue();
 		}
-		if (queueSize() > 0) {
+		if (queueSize() > 0 && !handshakeRetryAlarmSet) {
 			scrobbleNow();
 			return; // When the scrobble ends this method will be called again.
 		}
@@ -1105,12 +1130,6 @@ public class ScrobblerService extends Service {
 					}
 				});
 			} catch (IOException e) {
-				Runnable retry = new Runnable() {
-					@Override
-					public void run() {
-						scrobbleNow();
-					}
-				};
 				if (handshakeOK) {
 					++hardFailures;
 					Log.v(LOG_TAG, hardFailures + " hard failure(s) so far.");
@@ -1122,17 +1141,61 @@ public class ScrobblerService extends Service {
 				lastScrobbleResult = e instanceof HardFailure ?
 					FAILED_OTHER : FAILED_NET;
 				if (handshakeOK) {
-					handler.post(retry);
+					handler.post(new Runnable() {
+						@Override
+						public void run() {
+							scrobbleNow();
+						}
+					});
 				} else {
-					final long current = handshakeRetryWaitingTime;
-					handshakeRetryWaitingTime *= 2;
-					final int twoHours = 2 * 60 * 60 * 1000;
-					if (handshakeRetryWaitingTime > twoHours) {
-						handshakeRetryWaitingTime = twoHours;
+					if (handshakeRetryAlarmSet) {
+						Log.v(LOG_TAG,
+							"Alarm to retry handshake was already set.");
+					} else {
+						final long current = handshakeRetryWaitingTime;
+						handshakeRetryWaitingTime *= 2;
+						final int twoHours = 2 * 60 * 60 * 1000;
+						if (handshakeRetryWaitingTime > twoHours) {
+							handshakeRetryWaitingTime = twoHours;
+						}
+						Log.v(LOG_TAG, "Setting alarm to retry handshake in "
+							+ (current / 60 / 1000) + " minute(s).");
+						
+						Intent i = new Intent(
+							ScrobblerService.this, ScrobblerService.class);
+						i.setAction(ACTION_RETRY_HANDSHAKE);
+						
+						// It would be lovely to shove this into the Intent,
+						// but there seems to be a bug which stops that from
+						// working. The Intent that is received when the alarm
+						// goes off seems to always be the one that was provided
+						// to the first alarm that was set.
+						try {
+							FileOutputStream fos =
+								openFileOutput(WAITING_TIME_FILENAME, 0);
+							ObjectOutputStream oos =
+								new ObjectOutputStream(fos);
+							
+							oos.writeInt(handshakeRetryWaitingTime);
+							
+							oos.close();
+							fos.close();
+						} catch (IOException e1) {}
+						
+						((AlarmManager) getSystemService(ALARM_SERVICE))
+							.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+								SystemClock.elapsedRealtime() + current,
+								PendingIntent.getService(
+									ScrobblerService.this, 0, i, 0));
+						handshakeRetryAlarmSet = true;
 					}
-					Log.v(LOG_TAG, "Waiting " + (current / 60 / 1000) +
-						" minute(s) before retrying handshake.");
-					handler.postDelayed(retry, current);
+					
+					handler.post(new Runnable() {
+						@Override
+						public void run() {
+							stopIfIdle();
+						}
+					});
 				}
 			} catch (UserFailure e) {
 				inProgress = false;
