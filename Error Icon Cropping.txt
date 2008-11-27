@@ -1,0 +1,2 @@
+248:380 1588x1588
+cubic scale down to 25x25
