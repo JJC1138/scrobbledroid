@@ -307,6 +307,7 @@ public class ScrobblerService extends Service {
 	static final String PREFS = "prefs";
 	static final String LAST_PLAYING_FILENAME = "lastplaying";
 	static final String WAITING_TIME_FILENAME = "waitingtime";
+	static final String LAST_SCROBBLE_RESULT_FILENAME = "lastscrobbleresult";
 	private static final String ACTION_RETRY_HANDSHAKE =
 		"net.jjc1138.android.scrobbler.action.RETRY_HANDSHAKE";
 
@@ -480,6 +481,18 @@ public class ScrobblerService extends Service {
 		} catch (ClassNotFoundException e) {}
 		deleteFile(LAST_PLAYING_FILENAME);
 		
+		try {
+			FileInputStream fis = openFileInput(LAST_SCROBBLE_RESULT_FILENAME);
+			ObjectInputStream ois = new ObjectInputStream(fis);
+			
+			lastScrobbleResult = ois.readInt();
+			
+			ois.close();
+			fis.close();
+		} catch (StreamCorruptedException e) {
+		} catch (IOException e) {}
+		deleteFile(LAST_SCROBBLE_RESULT_FILENAME);
+		
 		if (queueSize() > 0) {
 			// Presumably it's been more than SCROBBLE_WAITING_TIME since the
 			// device was switched off.
@@ -487,10 +500,43 @@ public class ScrobblerService extends Service {
 		}
 	}
 
+	private boolean lastScrobbleUserFailure() {
+		return
+			lastScrobbleResult == BANNED ||
+			lastScrobbleResult == BADAUTH ||
+			lastScrobbleResult == BADTIME;
+	}
+
 	@Override
 	public void onDestroy() {
 		super.onDestroy();
 		prefs.unregisterOnSharedPreferenceChangeListener(prefsChanged);
+		
+		if (lastPlaying != null) {
+			try {
+				FileOutputStream fos = openFileOutput(LAST_PLAYING_FILENAME, 0);
+				ObjectOutputStream oos = new ObjectOutputStream(fos);
+				
+				oos.writeObject(lastPlaying);
+				oos.writeLong(lastPlayingTimePlayed);
+				
+				oos.close();
+				fos.close();
+			} catch (IOException e) {}
+		}
+		if (lastScrobbleUserFailure()) {
+			try {
+				FileOutputStream fos = openFileOutput(
+					LAST_SCROBBLE_RESULT_FILENAME, 0);
+				ObjectOutputStream oos = new ObjectOutputStream(fos);
+				
+				oos.writeInt(lastScrobbleResult);
+				
+				oos.close();
+				fos.close();
+			} catch (IOException e) {}
+		}
+
 		Log.v(LOG_TAG, "Service destroyed.");
 		wakeLock.release();
 	}
@@ -827,7 +873,10 @@ public class ScrobblerService extends Service {
 			Log.v(LOG_TAG, "Enqueued previously paused/stopped track.");
 			updatedQueue();
 		}
-		if (queueSize() > 0 && !handshakeRetryAlarmSet) {
+		if (queueSize() > 0 && !handshakeRetryAlarmSet &&
+			!lastScrobbleUserFailure() &&
+			!(prefs.getString("username", "").length() == 0)) {
+			
 			scrobbleNow();
 			return; // When the scrobble ends this method will be called again.
 		}
@@ -838,20 +887,6 @@ public class ScrobblerService extends Service {
 		
 		// Not playing, queue empty, not scrobbling, and no clients connected:
 		// it looks like we really are idle!
-		
-		if (lastPlaying != null) {
-			try {
-				FileOutputStream fos = openFileOutput(LAST_PLAYING_FILENAME, 0);
-				ObjectOutputStream oos = new ObjectOutputStream(fos);
-				
-				oos.writeObject(lastPlaying);
-				oos.writeLong(lastPlayingTimePlayed);
-				
-				oos.close();
-				fos.close();
-			} catch (IOException e) {}
-		}
-		
 		Log.v(LOG_TAG, "Shutting down idle service.");
 		stopSelf();
 	}
@@ -1103,143 +1138,128 @@ public class ScrobblerService extends Service {
 		public void run() {
 			Log.v(LOG_TAG, "Scrobbling process started.");
 			if (prefs.getString("username", "").length() == 0) {
-				inProgress = false;
 				Log.v(LOG_TAG, "Cannot scrobble because there is no username.");
-				updateAllClients();
-				return;
-			}
-			
-			if (lastScrobbleResult == BANNED ||
-				lastScrobbleResult == BADAUTH ||
-				lastScrobbleResult == BADTIME) {
-				
-				inProgress = false;
+			} else if (lastScrobbleUserFailure()) {
 				Log.v(LOG_TAG,
 					"Refusing to scrobble because of an uncorrected error.");
-				updateAllClients();
-				return;
-			}
-			boolean handshakeOK = false;
-			try {
-				handshake();
-				handshakeOK = true;
-				
-				while (queueSize() > 0) {
-					updateAllClients(); // Update the number of tracks left.
+			} else {
+				boolean handshakeOK = false;
+				try {
+					handshake();
+					handshakeOK = true;
 					
-					QueueEntry entry;
-					while (submission.size() < MAX_SCROBBLE_TRACKS &&
-						((entry = queue.poll()) != null)) {
+					while (queueSize() > 0) {
+						updateAllClients(); // Update the number of tracks left.
 						
-						submission.add(entry);
+						QueueEntry entry;
+						while (submission.size() < MAX_SCROBBLE_TRACKS &&
+							((entry = queue.poll()) != null)) {
+							
+							submission.add(entry);
+						}
+						
+						submit();
 					}
 					
-					submit();
-				}
-				
-				inProgress = false;
-				lastScrobbleResult = OK;
-				
-				handler.post(new Runnable() {
-					@Override
-					public void run() {
-						stopIfIdle();
-					}
-				});
-			} catch (IOException e) {
-				if (handshakeOK) {
-					++hardFailures;
-					Log.v(LOG_TAG, hardFailures + " hard failure(s) so far.");
-					if (hardFailures > 2) {
-						session.invalidate();
-					}
-				}
-				inProgress = false;
-				lastScrobbleResult = e instanceof HardFailure ?
-					FAILED_OTHER : FAILED_NET;
-				if (handshakeOK) {
-					handler.post(new Runnable() {
-						@Override
-						public void run() {
-							scrobbleNow();
-						}
-					});
-				} else {
-					if (handshakeRetryAlarmSet) {
+					lastScrobbleResult = OK;
+				} catch (IOException e) {
+					if (handshakeOK) {
+						++hardFailures;
 						Log.v(LOG_TAG,
-							"Alarm to retry handshake was already set.");
-					} else {
-						final long current = handshakeRetryWaitingTime;
-						handshakeRetryWaitingTime *= 2;
-						final int twoHours = 2 * 60 * 60 * 1000;
-						if (handshakeRetryWaitingTime > twoHours) {
-							handshakeRetryWaitingTime = twoHours;
+							hardFailures + " hard failure(s) so far.");
+						if (hardFailures > 2) {
+							session.invalidate();
 						}
-						Log.v(LOG_TAG, "Setting alarm to retry handshake in "
-							+ (current / 60 / 1000) + " minute(s).");
-						
-						Intent i = new Intent(
-							ScrobblerService.this, ScrobblerService.class);
-						i.setAction(ACTION_RETRY_HANDSHAKE);
-						
-						// It would be lovely to shove this into the Intent,
-						// but there seems to be a bug which stops that from
-						// working. The Intent that is received when the alarm
-						// goes off seems to always be the one that was provided
-						// to the first alarm that was set.
-						try {
-							FileOutputStream fos =
-								openFileOutput(WAITING_TIME_FILENAME, 0);
-							ObjectOutputStream oos =
-								new ObjectOutputStream(fos);
-							
-							oos.writeInt(handshakeRetryWaitingTime);
-							
-							oos.close();
-							fos.close();
-						} catch (IOException e1) {}
-						
-						((AlarmManager) getSystemService(ALARM_SERVICE))
-							.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
-								SystemClock.elapsedRealtime() + current,
-								PendingIntent.getService(
-									ScrobblerService.this, 0, i, 0));
-						handshakeRetryAlarmSet = true;
 					}
-					
-					handler.post(new Runnable() {
-						@Override
-						public void run() {
-							stopIfIdle();
+					inProgress = false;
+					lastScrobbleResult = e instanceof HardFailure ?
+						FAILED_OTHER : FAILED_NET;
+					if (handshakeOK) {
+						updateAllClients();
+						handler.post(new Runnable() {
+							@Override
+							public void run() {
+								scrobbleNow();
+							}
+						});
+						return;
+					} else {
+						if (handshakeRetryAlarmSet) {
+							Log.v(LOG_TAG,
+								"Alarm to retry handshake was already set.");
+						} else {
+							final long current = handshakeRetryWaitingTime;
+							handshakeRetryWaitingTime *= 2;
+							final int twoHours = 2 * 60 * 60 * 1000;
+							if (handshakeRetryWaitingTime > twoHours) {
+								handshakeRetryWaitingTime = twoHours;
+							}
+							Log.v(LOG_TAG, "Setting alarm to retry handshake " +
+								"in " + (current / 60 / 1000) + " minute(s).");
+							
+							Intent i = new Intent(
+								ScrobblerService.this, ScrobblerService.class);
+							i.setAction(ACTION_RETRY_HANDSHAKE);
+							
+							// It would be lovely to shove this into the Intent,
+							// but there seems to be a bug which stops that from
+							// working. The Intent that is received when the
+							// alarm goes off seems to always be the one that
+							// was provided to the first alarm that was set.
+							try {
+								FileOutputStream fos =
+									openFileOutput(WAITING_TIME_FILENAME, 0);
+								ObjectOutputStream oos =
+									new ObjectOutputStream(fos);
+								
+								oos.writeInt(handshakeRetryWaitingTime);
+								
+								oos.close();
+								fos.close();
+							} catch (IOException e1) {}
+							
+							((AlarmManager) getSystemService(ALARM_SERVICE))
+								.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+									SystemClock.elapsedRealtime() + current,
+									PendingIntent.getService(
+										ScrobblerService.this, 0, i, 0));
+							handshakeRetryAlarmSet = true;
 						}
-					});
-				}
-			} catch (UserFailure e) {
-				inProgress = false;
-				lastScrobbleResult = e.getReason();
-				if (!bound) {
-					int textID =
-						e.reason == BANNED ? R.string.scrobbling_banned :
-						e.reason == BADAUTH ? R.string.scrobbling_badauth :
-						e.reason == BADTIME ? R.string.scrobbling_badtime : 0;
-					if (textID != 0) {
-						Notification n = new Notification();
-						n.icon = R.drawable.error;
-						Intent i = new Intent(
-							ScrobblerService.this, ScrobblerConfig.class);
-						i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-						n.setLatestEventInfo(ScrobblerService.this,
-							getString(R.string.app_name), getString(textID),
-							PendingIntent.getActivity(ScrobblerService.this, 0,
-								i, 0));
-						n.flags |= Notification.FLAG_AUTO_CANCEL;
-						((NotificationManager) getSystemService(
-							NOTIFICATION_SERVICE)).notify(0, n);
+					}
+				} catch (UserFailure e) {
+					lastScrobbleResult = e.getReason();
+					if (!bound) {
+						int textID =
+							e.reason == BANNED ? R.string.scrobbling_banned :
+							e.reason == BADAUTH ? R.string.scrobbling_badauth :
+							e.reason == BADTIME ? R.string.scrobbling_badtime :
+							0;
+						if (textID != 0) {
+							Notification n = new Notification();
+							n.icon = R.drawable.error;
+							Intent i = new Intent(
+								ScrobblerService.this, ScrobblerConfig.class);
+							i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+							n.setLatestEventInfo(ScrobblerService.this,
+								getString(R.string.app_name), getString(textID),
+								PendingIntent.getActivity(ScrobblerService.this,
+									0, i, 0));
+							n.flags |= Notification.FLAG_AUTO_CANCEL;
+							((NotificationManager) getSystemService(
+								NOTIFICATION_SERVICE)).notify(0, n);
+						}
 					}
 				}
 			}
 			
+			inProgress = false;
 			updateAllClients();
+			handler.post(new Runnable() {
+				@Override
+				public void run() {
+					stopIfIdle();
+				}
+			});
 		}
 
 		public boolean inProgress() {

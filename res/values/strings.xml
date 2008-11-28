@@ -16,7 +16,7 @@
 <string name="scrobble_immediate">Scrobbling starts automatically when a track finishes.</string>
 <string name="scrobble_when_minutes">1#one minute| 1&lt;{0} minutes</string>
 <string name="scrobble_when_tracks">1#is a track| 1&lt;are {0} tracks</string>
-<string name="scrobble_when">Scrobbling will start automatically {0} after music stops playing, or when there {1} waiting (whichever happens first).</string>
+<string name="scrobble_when">Scrobbling will start automatically about {0} after music stops playing, or when there {1} waiting (whichever happens first).</string>
 <string name="scrobble_now">Start scrobbling now</string>
 <string name="scrobbling_in_progress">Scrobbling is in progress...</string>
 <string name="scrobbling_ok">The last scrobble was successful.</string>
