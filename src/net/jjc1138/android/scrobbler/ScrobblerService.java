@@ -384,6 +384,7 @@ public class ScrobblerService extends Service {
 		
 		wakeLock = ((PowerManager) getSystemService(POWER_SERVICE))
 			.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, LOG_TAG);
+		wakeLock.setReferenceCounted(false);
 		// We hold onto this WakeLock whenever this service is running. That may
 		// seem reckless at first glance, but we carefully manage the lifetime
 		// of the service and shut it down when it isn't needed (in
@@ -511,34 +512,8 @@ public class ScrobblerService extends Service {
 	public void onDestroy() {
 		super.onDestroy();
 		prefs.unregisterOnSharedPreferenceChangeListener(prefsChanged);
-		
-		if (lastPlaying != null) {
-			try {
-				FileOutputStream fos = openFileOutput(LAST_PLAYING_FILENAME, 0);
-				ObjectOutputStream oos = new ObjectOutputStream(fos);
-				
-				oos.writeObject(lastPlaying);
-				oos.writeLong(lastPlayingTimePlayed);
-				
-				oos.close();
-				fos.close();
-			} catch (IOException e) {}
-		}
-		if (lastScrobbleUserFailure()) {
-			try {
-				FileOutputStream fos = openFileOutput(
-					LAST_SCROBBLE_RESULT_FILENAME, 0);
-				ObjectOutputStream oos = new ObjectOutputStream(fos);
-				
-				oos.writeInt(lastScrobbleResult);
-				
-				oos.close();
-				fos.close();
-			} catch (IOException e) {}
-		}
-
-		Log.v(LOG_TAG, "Service destroyed.");
 		wakeLock.release();
+		Log.v(LOG_TAG, "Service destroyed.");
 	}
 
 	private boolean isScrobbling() {
@@ -790,6 +765,7 @@ public class ScrobblerService extends Service {
 	public void onStart(Intent intent, int startId) {
 		super.onStart(intent, startId);
 		
+		wakeLock.acquire();
 		String action = intent.getAction();
 		if (action != null &&
 			(action.equals(Intent.ACTION_TIME_CHANGED) ||
@@ -888,6 +864,32 @@ public class ScrobblerService extends Service {
 		// Not playing, queue empty, not scrobbling, and no clients connected:
 		// it looks like we really are idle!
 		Log.v(LOG_TAG, "Shutting down idle service.");
+		
+		if (lastPlaying != null) {
+			try {
+				FileOutputStream fos = openFileOutput(LAST_PLAYING_FILENAME, 0);
+				ObjectOutputStream oos = new ObjectOutputStream(fos);
+				
+				oos.writeObject(lastPlaying);
+				oos.writeLong(lastPlayingTimePlayed);
+				
+				oos.close();
+				fos.close();
+			} catch (IOException e) {}
+		}
+		if (lastScrobbleUserFailure()) {
+			try {
+				FileOutputStream fos = openFileOutput(
+					LAST_SCROBBLE_RESULT_FILENAME, 0);
+				ObjectOutputStream oos = new ObjectOutputStream(fos);
+				
+				oos.writeInt(lastScrobbleResult);
+				
+				oos.close();
+				fos.close();
+			} catch (IOException e) {}
+		}
+		wakeLock.release();
 		stopSelf();
 	}
 
