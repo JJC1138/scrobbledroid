@@ -809,6 +809,7 @@ public class ScrobblerService extends Service {
 				// The version of the Music app on the G1 doesn't send
 				// broadcasts when a track stops at the end of a playlist, so
 				// we poll every minute to see if it has in fact finished.
+				Log.v(LOG_TAG, "Scheduling a check for playing track.");
 				handler.postDelayed(new Runnable() {
 					@Override
 					public void run() {
@@ -876,6 +877,8 @@ public class ScrobblerService extends Service {
 				oos.close();
 				fos.close();
 			} catch (IOException e) {}
+		} else {
+			deleteFile(LAST_PLAYING_FILENAME);
 		}
 		if (lastScrobbleUserFailure()) {
 			try {
@@ -888,6 +891,8 @@ public class ScrobblerService extends Service {
 				oos.close();
 				fos.close();
 			} catch (IOException e) {}
+		} else {
+			deleteFile(LAST_SCROBBLE_RESULT_FILENAME);
 		}
 		wakeLock.release();
 		stopSelf();
