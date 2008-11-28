@@ -1059,6 +1059,7 @@ public class ScrobblerService extends Service {
 				hardFailures = 0;
 				handshakeRetryWaitingTime =
 					INITIAL_HANDSHAKE_RETRY_WAITING_TIME;
+				deleteFile(WAITING_TIME_FILENAME);
 				
 				Log.v(LOG_TAG, "New session started.");
 			}
