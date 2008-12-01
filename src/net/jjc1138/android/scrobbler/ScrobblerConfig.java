@@ -253,7 +253,7 @@ public class ScrobblerConfig extends Activity {
 			@Override
 			public void onClick(View v) {
 				startActivity((new Intent(Intent.ACTION_VIEW,
-					Uri.parse("https://m.last.fm/join"))));
+					Uri.parse("https://www.last.fm/join"))));
 			}
 		});
 		view_user_page.setOnClickListener(new View.OnClickListener() {
