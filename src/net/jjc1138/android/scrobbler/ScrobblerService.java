@@ -96,7 +96,9 @@ class Track implements Serializable {
 			try {
 				final String UNKNOWN = "<unknown>";
 				
-				cur.moveToFirst();
+				if (!cur.moveToFirst()) {
+					throw new IncompleteMetadataException();
+				}
 				artist = cur.getString(cur.getColumnIndex(
 					MediaStore.Audio.AudioColumns.ARTIST));
 				if (artist.length() == 0 || artist.equals(UNKNOWN)) {
@@ -349,6 +351,7 @@ public class ScrobblerService extends Service {
 	// This is a horrible workaround. see the comment in stopIfIdle() for
 	// explanation:
 	private boolean lastPlayingFromMusicStatusFetcher = false;
+	private String lastPlayingMusicStatusFetcherBroadcastAction = null;
 
 	// Scrobbling must be done chronologically, so it is not allowable for two
 	// threads to be scrobbling at once. To help ensure this, only one function
@@ -664,6 +667,8 @@ public class ScrobblerService extends Service {
 		if (intent.getBooleanExtra("playing", false)) {
 			lastPlayingFromMusicStatusFetcher = intent.getBooleanExtra(
 				MusicStatusFetcher.FROM_MUSIC_STATUS_FETCHER, false);
+			lastPlayingMusicStatusFetcherBroadcastAction =
+				intent.getStringExtra(MusicStatusFetcher.BROADCAST_ACTION);
 			
 			Track t = null;
 			try {
@@ -814,7 +819,9 @@ public class ScrobblerService extends Service {
 					@Override
 					public void run() {
 						startService(new Intent(
-							ScrobblerService.this, MusicStatusFetcher.class));
+							ScrobblerService.this, MusicStatusFetcher.class)
+							.putExtra(MusicStatusFetcher.BROADCAST_ACTION,
+								lastPlayingMusicStatusFetcherBroadcastAction));
 					}
 				}, 60000);
 			}

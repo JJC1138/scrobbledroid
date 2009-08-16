@@ -8,7 +8,9 @@ public class MusicBroadcastReceiver extends BroadcastReceiver {
 
 	@Override
 	public void onReceive(Context context, Intent intent) {
-		context.startService(new Intent(context, MusicStatusFetcher.class));
+		final Intent out = new Intent(context, MusicStatusFetcher.class);
+		out.putExtra(MusicStatusFetcher.BROADCAST_ACTION, intent.getAction());
+		context.startService(out);
 	}
 
 }

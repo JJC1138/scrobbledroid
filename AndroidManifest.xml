@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
 	package="net.jjc1138.android.scrobbler"
-	android:versionCode="4"
-	android:versionName="1.0.3">
+	android:versionCode="5"
+	android:versionName="1.0.4">
 	<permission android:name="net.jjc1138.android.scrobbler.privateservices"
 		android:protectionLevel="signature" />
 	<uses-permission android:name="net.jjc1138.android.scrobbler.privateservices" />
@@ -41,6 +41,9 @@
 				<action android:name="com.android.music.metachanged" />
 				<action android:name="com.android.music.playbackcomplete" />
 				<action android:name="com.android.music.playstatechanged" />
+				<action android:name="com.htc.music.metachanged" />
+				<action android:name="com.htc.music.playbackcomplete" />
+				<action android:name="com.htc.music.playstatechanged" />
 			</intent-filter>
 		</receiver>
 		<service android:name=".MusicStatusFetcher"
