@@ -3,6 +3,7 @@
 	package="net.jjc1138.android.scrobbler"
 	android:versionCode="5"
 	android:versionName="1.0.4">
+	<uses-sdk android:minSdkVersion="1" />
 	<permission android:name="net.jjc1138.android.scrobbler.privateservices"
 		android:protectionLevel="signature" />
 	<uses-permission android:name="net.jjc1138.android.scrobbler.privateservices" />
