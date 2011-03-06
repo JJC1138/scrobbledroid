@@ -75,7 +75,7 @@ class Track implements Serializable {
 			}
 		}
 		
-		id = i.getIntExtra("id", -1);
+		id = i.getLongExtra("id", -1);
 		
 		if (id != -1) {
 			final String[] columns = new String[] {
@@ -223,7 +223,7 @@ class Track implements Serializable {
 
 	@Override
 	public int hashCode() {
-		return id;
+		return (int) id;
 	}
 
 	@Override
@@ -232,7 +232,7 @@ class Track implements Serializable {
 		return s + artist + " - " + track;
 	}
 
-	private int id;
+	private long id;
 
 	private String artist;
 	private String track;
@@ -653,7 +653,7 @@ public class ScrobblerService extends Service {
 	private void handleIntent(Intent intent) {
 		Log.v(LOG_TAG, "Status: " +
 			((intent.getBooleanExtra("playing", false) ? "playing" : "stopped")
-			+ " track " + intent.getIntExtra("id", -1)));
+			+ " track " + intent.getLongExtra("id", -1)));
 		
 		if (!prefs.getBoolean("enable", true)) {
 			return;
