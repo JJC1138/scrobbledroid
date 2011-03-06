@@ -64,6 +64,17 @@ class IncompleteMetadataException extends InvalidMetadataException {
 class Track implements Serializable {
 	private static final String sources = "PREU";
 
+	public static long getID(Intent i) {
+		// It might be in a long extra or an int extra, so we have to check
+		// both:
+		final int def = -1;
+		long id = i.getLongExtra("id", def);
+		if (id != def) {
+			return id;
+		}
+		return i.getIntExtra("id", def);
+	}
+
 	public Track(Intent i, Context c) throws InvalidMetadataException {
 		String iSource = i.getStringExtra("source");
 		if (iSource == null || iSource.length() < 1) {
@@ -75,7 +86,7 @@ class Track implements Serializable {
 			}
 		}
 		
-		id = i.getLongExtra("id", -1);
+		id = getID(i);
 		
 		if (id != -1) {
 			final String[] columns = new String[] {
@@ -653,7 +664,7 @@ public class ScrobblerService extends Service {
 	private void handleIntent(Intent intent) {
 		Log.v(LOG_TAG, "Status: " +
 			((intent.getBooleanExtra("playing", false) ? "playing" : "stopped")
-			+ " track " + intent.getLongExtra("id", -1)));
+			+ " track " + Track.getID(intent)));
 		
 		if (!prefs.getBoolean("enable", true)) {
 			return;
