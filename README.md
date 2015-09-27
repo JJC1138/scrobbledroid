@@ -1,3 +1,5 @@
+**_This project is unmaintained. I recommend all users move to an alternative app._**
+
 # Scrobble Droid
 This application is a "scrobbler".
 
