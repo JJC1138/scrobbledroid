@@ -26,6 +26,6 @@ You can report a bug or suggestion in the "Issues" section. That's also the plac
 If you have more general feedback then please feel free to leave a comment on the Scrobble Droid entry at the Android Market, or send an e-mail to: scrobbledroid at jjc1138 dot net.
 
 ## Developers
-If you are the developer of an Android application that plays music and you'd like to add Last.fm scrobbling support to it then please see the easy to use Scrobble Droid API.
+If you are the developer of an Android application that plays music and you'd like to add Last.fm scrobbling support to it then please see the easy to use [Scrobble Droid API](https://github.com/JJC1138/scrobbledroid/wiki/Developer-API).
 
 Android is a trademark of Google Inc. Use of this trademark is subject to [Google Permissions](http://www.google.com/permissions/index.html).
